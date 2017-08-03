@@ -19,9 +19,10 @@ class road:
             return False
 
 class hit:
-    def __init__(self, ind, time):
+    def __init__(self, ind, time, pos):
         self.ib = ind
         self.time = time
+        self.pos = pos
 
 class octplane:
     def __init__(self, ind, alpha, origin):

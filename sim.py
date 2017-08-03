@@ -14,11 +14,27 @@ NSTRIPS = 512
 xlow = 0.
 xhigh = 200.
 ylow = 0.
-yhigh = 200.
+yhigh = 217.9
 
 bc_wind = 8
 mm_eff = [0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]
 sig_art = 32 #ns
+
+# road size
+XROAD = 64
+UVROAD = 64
+
+muonrate = 1 #Hz
+
+bkgrate = 1 # Hz per square mm
+
+
+class rates:
+    ''' to keep in mind '''
+    def __init__(self, muonrate, bkgrate):
+        self.muonrate_bc = muonrate / (4.*pow(10,7)) 
+        self.bkgrate_bc = bkgrate / (4.*pow(10,7))
+    
 
 def cosmic_angle():
     ''' return x, y angle of cosmic, better if it uses the cos^2 distribution '''
@@ -26,6 +42,33 @@ def cosmic_angle():
 
 #def art_tdis():
     
+
+def create_roads():
+    # how do i road
+    # given octplane dimensions, divide into roads
+    # index from 0 like a normal person
+    if (NSTRIPS % XROAD != 0):
+        print "not divisible!"
+
+    nxroad = NSTRIPS/XROAD
+    nuvroad = NSTRIPS/UVROAD
+
+    x_roads = {"0":[], "1":[], "6":[], "7":[]}
+    uv_roads = {"2":[], "3":[], "4":[], "5":[]}
+
+    #x board
+    for key in x_roads:
+        for i in range(nxroad):
+            striplow = i*XROAD
+            striphigh = (i+1)*XROAD-1
+            x_roads[key].append(oct.road(int(key), striplow, striphigh))
+
+    #uv board
+    for key in uv_roads:
+        for i in range(nuvroad):
+            striplow = i*UVROAD
+            striphigh = (i+1)*UVROAD-1
+            uv_roads[key].append(oct.road(int(key), striplow, striphigh))
 
 
 def cluster_pdf():
@@ -63,6 +106,52 @@ def generate_muon():
         channels[ib] = myoct.channel(x_b,y_b, ib)
     
     return xpos, ypos, zpos
+
+def generate_bkg(start_bc):
+
+    myoct = oct.octgeo()
+
+    rate = rates(muonrate, bkgrate)
+
+#     if (rate.bkgrate_bc > 1.):
+#         print "this isn't gonna work, you messed up"
+#         sys.exit()
+
+    plane_area = (xhigh-xlow) * (yhigh-ylow)
+#     nthrows = int(plane_area) # assuming the bkg rate is in mm, and the plane area is also in mm
+#     xscan = int(xhigh-xlow)
+#     yscan = int(yhigh-ylow)
+
+    bkghits = []
+
+    # this is toooooooo slow
+#     for bc in range(bc_wind):
+#         for i in range(NBOARDS):
+#             for j in range(xscan):
+#                 for k in range(yscan):
+#                     if np.random.uniform(0,1) < rate.bkgrate_bc:
+#                         x = np.random.uniform(xlow,xlow + xscan)
+#                         y = np.random.uniform(ylow, ylow+yscan)
+#                         z = myoct.planes[i].originz
+#                         bkghits.append(oct.hit( i, bc, (x,y,z)))
+
+    # assume uniform distribution of background - correct for noise
+    expbkg = rate.bkgrate_bc * bc_wind * plane_area
+    nbkg = int(expbkg)
+
+    # deal with rates that are between integers
+    if np.random.uniform(0,1) < (expbkg-int(expbkg)):
+        nbkg += 1
+    
+    # need to figure out how to incorporate freq in a better way
+    for i in range(NBOARDS):
+        for j in range(nbkg):
+            x = np.random.uniform(xlow, xhigh)
+            y = np.random.uniform(ylow, yhigh)
+            z = myoct.planes[i].originz
+            bkghits.append(oct.hit(i, start_bc + np.random.randint(0,bc_wind), (x,y,z)))
+
+    return bkghits
 
 def oct_response(xpos, ypos, zpos):
     ''' gives detector response to muon, returns list of which planes registered hit '''
@@ -120,17 +209,31 @@ def main():
             if bit==1:
                 art_time = np.random.normal(400.,sig_art)
                 art_bc[j] = math.floor(art_time / 25.)
-                hits.append(oct.hit(j,art_bc[j]))
+                hits.append(oct.hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j])))
 
+        for bc in art_bc:
+            if bc == -1:
+                continue
+            if bc < smallest_bc:
+                smallest_bc = bc
 
-        if not(trigger(hits,100000)): 
+        # assume bkg rate has oct_response factored in
+        bkg_hits = generate_bkg(smallest_bc)
+        for h in bkg_hits:
+            print h.pos
+
+        allhits = hits + bkg_hits
+
+        if not(trigger(allhits,100000)): 
             continue
 
         ntrigcand += 1
 
-        if not(trigger(hits,bc_wind)):
+        if not(trigger(allhits,bc_wind)):
             continue
+
         ntrig += 1
+        
 
     print n, ntrigcand, ntrig
 
