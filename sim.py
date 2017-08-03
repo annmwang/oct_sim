@@ -24,10 +24,11 @@ sig_art = 32 #ns
 XROAD = 64
 UVROAD = 64
 
+# rates
 muonrate = 1 #Hz
-
 bkgrate = 100 # Hz per square mm
 
+myoct = oct.Octgeo()
 
 class rates:
     ''' to keep in mind '''
@@ -38,38 +39,26 @@ class rates:
 
 def cosmic_angle():
     ''' return x, y angle of cosmic, better if it uses the cos^2 distribution '''
-    return (0.,0.)
+    return (0.15,0.15)
+#    return (0.,0.)
 
 #def art_tdis():
     
 
 def create_roads():
+
     # how do i road
     # given octplane dimensions, divide into roads
     # index from 0 like a normal person
+
     if (NSTRIPS % XROAD != 0):
         print "not divisible!"
 
-    nxroad = NSTRIPS/XROAD
-    nuvroad = NSTRIPS/UVROAD
+    nroad = NSTRIPS/XROAD
 
-    x_roads = {"0":[], "1":[], "6":[], "7":[]}
-    uv_roads = {"2":[], "3":[], "4":[], "5":[]}
+    roads = [(oct.Road(i,myoct)) for i in range(nroad)]
 
-    #x board
-    for key in x_roads:
-        for i in range(nxroad):
-            striplow = i*XROAD
-            striphigh = (i+1)*XROAD-1
-            x_roads[key].append(oct.road(int(key), striplow, striphigh))
-
-    #uv board
-    for key in uv_roads:
-        for i in range(nuvroad):
-            striplow = i*UVROAD
-            striphigh = (i+1)*UVROAD-1
-            uv_roads[key].append(oct.road(int(key), striplow, striphigh))
-
+    return roads
 
 def cluster_pdf():
     ''' returns a cluster size given a hand-defined pdf'''
@@ -81,7 +70,7 @@ def cluster_pdf():
 
 def generate_muon():
 
-    myoct = oct.octgeo()
+    #myoct = oct.Octgeo()
     # assume uniform distribution of cosmics passing through board
     x = np.random.uniform(xlow, xhigh)
     y = np.random.uniform(ylow, yhigh)
@@ -109,7 +98,7 @@ def generate_muon():
 
 def generate_bkg(start_bc):
 
-    myoct = oct.octgeo()
+    #myoct = oct.Octgeo()
 
     rate = rates(muonrate, bkgrate)
 
@@ -133,7 +122,7 @@ def generate_bkg(start_bc):
 #                         x = np.random.uniform(xlow,xlow + xscan)
 #                         y = np.random.uniform(ylow, ylow+yscan)
 #                         z = myoct.planes[i].originz
-#                         bkghits.append(oct.hit( i, bc, (x,y,z), False))
+#                         bkghits.append(oct.Hit( i, bc, (x,y,z), False))
 
     # assume uniform distribution of background - correct for noise
     expbkg = rate.bkgrate_bc * bc_wind * plane_area
@@ -153,7 +142,7 @@ def generate_bkg(start_bc):
             x = np.random.uniform(xlow, xhigh)
             y = np.random.uniform(ylow, yhigh)
             z = myoct.planes[i].originz
-            bkghits.append(oct.hit(i, start_bc + np.random.randint(0,bc_wind), (x,y,z), False))
+            bkghits.append(oct.Hit(i, start_bc + np.random.randint(0,bc_wind), (x,y,z), False))
 
     return bkghits
 
@@ -166,6 +155,16 @@ def oct_response(xpos, ypos, zpos):
             oct_hitmask[i] = 1
             n_mm += 1 
     return oct_hitmask
+
+def finder(hits, roads):
+    ''' applies roads '''
+    for hit in hits:
+        for road in roads:
+            if hit.ib < 2 or hit.ib > 5:
+                road.in_road_neighbors(hit, XROAD)
+            else:
+                road.in_road_neighbors(hit, UVROAD)
+    return roads
 
 def trigger(hits, bcwindow):
     n_x1, n_x2, n_uv = 0, 0, 0
@@ -189,9 +188,12 @@ def trigger(hits, bcwindow):
                
 def main():
 
-    n = 1000
+    n = 1
     ntrigcand = 0
     ntrig = 0
+    
+    maxplots = 1
+    nplot = 0
 
     for i in range(n):
         xpos, ypos, zpos = generate_muon()
@@ -213,7 +215,7 @@ def main():
             if bit==1:
                 art_time = np.random.normal(400.,sig_art)
                 art_bc[j] = math.floor(art_time / 25.)
-                hits.append(oct.hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j]),True))
+                hits.append(oct.Hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j]),True))
 
         for bc in art_bc:
             if bc == -1:
@@ -223,25 +225,33 @@ def main():
 
         # assume bkg rate has oct_response factored in
         bkg_hits = generate_bkg(smallest_bc)
-        for h in bkg_hits:
-            print h.pos
+#         for h in bkg_hits:
+#             print h.pos
 
         allhits = hits + bkg_hits
 
-        if len(bkg_hits) > 0:
+        if len(bkg_hits) > 0 and nplot < maxplots:
             print "had bkg hit!"
             plttrk(allhits,True)
             plttrk(allhits,False)
+            nplot += 1
 
-        if not(trigger(allhits,100000)): 
-            continue
+        roads = create_roads()
+        roads = finder(allhits, roads)
 
-        ntrigcand += 1
+        for road in roads:
+            print "road index",road.iroad
+            for hit in road.hits:
+                print hit.pos[0]
+            if not(trigger(road.hits,100000)): 
+                continue
 
-        if not(trigger(allhits,bc_wind)):
-            continue
+            ntrigcand += 1
 
-        ntrig += 1
+            if not(trigger(road.hits,bc_wind)):
+                continue
+
+            ntrig += 1
         
 
     print n, ntrigcand, ntrig
@@ -321,15 +331,15 @@ def plttrk(hits, xflag):
     
     gr = ROOT.TGraph(len(z), x, z);
     gr.SetTitle("Cluster locations");
-    gr.SetMarkerColor(46);
+    gr.SetMarkerColor(ROOT.kPink+6);
     gr.SetMarkerStyle(20);
-    gr.SetMarkerSize(1);
+    gr.SetMarkerSize(1.4);
 
     grbkg = ROOT.TGraph(len(bkgz), bkgx, bkgz);
     grbkg.SetTitle("");
     grbkg.SetMarkerColor(ROOT.kCyan-8);
     grbkg.SetMarkerStyle(20);
-    grbkg.SetMarkerSize(1);
+    grbkg.SetMarkerSize(1.4);
 
 
     mg.Add(gr,"p")
