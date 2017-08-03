@@ -42,22 +42,32 @@ class Road:
             return True
         else:
             return False
-    def find_coincidences(self):
-        nx1, nx2, nuv = 0
-        for hit in self.hits:
-            if hit.ib < 2:
-                nx1 += 1
-            elif hit.ib > 5:
-                nx2 += 1
-            else:
-                nuv += 1
-        if (nx1 > 0 and nx2 > 0 and nuv > 1):
-            return True
-        else:
-            return False
-
-
-
+    def sort(self):
+        self.hits.sort(key=lambda x:x.time)
+    def prune(self, window):
+        # take each plane
+        # if there is a hit, make sure that there is no other hit within the window
+        pruned_hits = []
+        for i in range(NBOARDS):
+            planehits = []
+            for hit in self.hits:
+                if i == hit.ib:
+                    planehits.append(hit)
+            if len(planehits) < 1:
+                continue
+            planehits.sort(key=lambda x:x.time)
+            kepthits = [planehits[0]]
+            leadhit = planehits[0]
+            leadhit_expire = leadhit.time+window-1
+            for hit in planehits:
+                if hit.time > leadhit_expire:
+                    leadhit = hit
+                    leadhit_expire = leadhit.time+window-1
+                    kepthits.append(hit)
+            pruned_hits += kepthits
+        self.hits = pruned_hits
+        self.sort()
+            
 class Hit:
     def __init__(self, ind, time, pos, real):
         self.ib = ind

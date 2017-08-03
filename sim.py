@@ -11,13 +11,15 @@ import oct as oct
 
 NBOARDS = 8
 NSTRIPS = 512
+
 xlow = 0.
 xhigh = 200.
 ylow = 0.
 yhigh = 217.9
 
-bc_wind = 2
+bc_wind = 4
 mm_eff = [0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]
+
 sig_art = 32 #ns
 
 # road size
@@ -39,15 +41,13 @@ class rates:
 
 def cosmic_angle():
     ''' return x, y angle of cosmic, better if it uses the cos^2 distribution '''
-    return (0.15,0.15)
-#    return (0.,0.)
-
-#def art_tdis():
-    
+    if np.random.uniform(0,1.) < 0.3:
+        return (0.15,0.15)
+    else:
+        return (0.,0.)
 
 def create_roads():
 
-    # how do i road
     # given octplane dimensions, divide into roads
     # index from 0 like a normal person
 
@@ -70,7 +70,6 @@ def cluster_pdf():
 
 def generate_muon():
 
-    #myoct = oct.Octgeo()
     # assume uniform distribution of cosmics passing through board
     x = np.random.uniform(xlow, xhigh)
     y = np.random.uniform(ylow, yhigh)
@@ -102,47 +101,24 @@ def generate_bkg(start_bc):
 
     rate = rates(muonrate, bkgrate)
 
-#     if (rate.bkgrate_bc > 1.):
-#         print "this isn't gonna work, you messed up"
-#         sys.exit()
-
     plane_area = (xhigh-xlow) * (yhigh-ylow)
-#     nthrows = int(plane_area) # assuming the bkg rate is in mm, and the plane area is also in mm
-#     xscan = int(xhigh-xlow)
-#     yscan = int(yhigh-ylow)
 
     bkghits = []
 
-    # this is toooooooo slow
-#     for bc in range(bc_wind):
-#         for i in range(NBOARDS):
-#             for j in range(xscan):
-#                 for k in range(yscan):
-#                     if np.random.uniform(0,1) < rate.bkgrate_bc:
-#                         x = np.random.uniform(xlow,xlow + xscan)
-#                         y = np.random.uniform(ylow, ylow+yscan)
-#                         z = myoct.planes[i].originz
-#                         bkghits.append(oct.Hit( i, bc, (x,y,z), False))
+    noise_window = bc_wind * 3
+    start_noise = start_bc - bc_wind
+    end_noise = start_bc + bc_wind * 2 -1 
 
     # assume uniform distribution of background - correct for noise
-    expbkg = rate.bkgrate_bc * bc_wind * plane_area
-    nbkg = int(expbkg)
+    expbkg = rate.bkgrate_bc * noise_window  * plane_area
 
-#     # deal with rates that are between integers
-#     if np.random.uniform(0,1) < (expbkg-int(expbkg)):
-#         nbkg += 1
-    
-    # need to figure out how to incorporate freq in a better way
     for i in range(NBOARDS):
-        planebkg = nbkg
-        # deal with rates that are between integers
-        if np.random.uniform(0,1) < (expbkg-int(expbkg)):
-            planebkg += 1
-        for j in range(planebkg):
+        nbkg = stats.poisson.rvs(expbkg)
+        for j in range(nbkg):
             x = np.random.uniform(xlow, xhigh)
             y = np.random.uniform(ylow, yhigh)
             z = myoct.planes[i].originz
-            bkghits.append(oct.Hit(i, start_bc + np.random.randint(0,bc_wind), (x,y,z), False))
+            bkghits.append(oct.Hit(i, np.random.randint(start_noise,end_noise +1), (x,y,z), False))
 
     return bkghits
 
@@ -163,36 +139,53 @@ def finder(hits, roads):
             if hit.ib < 2 or hit.ib > 5:
                 road.in_road_neighbors(hit, XROAD)
             else:
+                # fix this uv road
                 road.in_road_neighbors(hit, UVROAD)
+    for road in roads:
+        road.sort()
+        road.prune(bc_wind)
     return roads
 
 def trigger(hits, bcwindow):
+    ''' return number of triggers in sliding window '''
+    hits_copy = hits[:]
     n_x1, n_x2, n_uv = 0, 0, 0
     mintime = 99999.
-    for hit in hits:
-        if hit.time < mintime:
-            mintime = hit.time
-    for hit in hits:
-        if (hit.time-mintime) >= bcwindow:
-            continue
-        if hit.ib < 2:
-            n_x1 += 1
-        if hit.ib > 5:
-            n_x2 += 1
-        if hit.ib > 1 or hit.ib < 6:
-            n_uv += 1
-    if n_x1 > 0 and n_x2 > 0 and n_uv > 1:
-        return True
-    else:
-        return False
+    min_ihit = -1
+    nhits = len(hits_copy)
+    ntrig = 0
+    while nhits > 3:
+        for i, hit in enumerate(hits_copy):
+            if hit.time < mintime:
+                mintime = hit.time
+                min_ihit = i
+        for hit in hits_copy:
+            if (hit.time-mintime) >= bcwindow:
+                continue
+            if hit.ib < 2:
+                n_x1 += 1
+            if hit.ib > 5:
+                n_x2 += 1
+            if hit.ib > 1 or hit.ib < 6:
+                n_uv += 1
+        if n_x1 > 0 and n_x2 > 0 and n_uv > 1:
+            ntrig += 1
+        old_ihits = [i for i, dum in enumerate(hits_copy) if dum.time == mintime]
+        for j in sorted(old_ihits, reverse=True):
+            hits_copy.pop(j)
+        nhits -= 1
+        mintime = 99999.
+        min_ihit = -1
+    return ntrig
                
 def main():
 
-    n = 1
+    n = 100
     ntrigcand = 0
     ntrig = 0
     
-    maxplots = 1
+    # plotting stuff
+    maxplots = 2
     nplot = 0
 
     for i in range(n):
@@ -212,7 +205,7 @@ def main():
 
         # smear strip with art resolution
         for j, bit in enumerate(oct_hitmask):
-            if bit==1:
+            if bit == 1:
                 art_time = np.random.normal(400.,sig_art)
                 art_bc[j] = math.floor(art_time / 25.)
                 hits.append(oct.Hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j]),True))
@@ -225,8 +218,7 @@ def main():
 
         # assume bkg rate has oct_response factored in
         bkg_hits = generate_bkg(smallest_bc)
-#         for h in bkg_hits:
-#             print h.pos
+        # change this to 2*bc_wind after
 
         allhits = hits + bkg_hits
 
@@ -240,18 +232,8 @@ def main():
         roads = finder(allhits, roads)
 
         for road in roads:
-            print "road index",road.iroad
-            for hit in road.hits:
-                print hit.pos[0]
-            if not(trigger(road.hits,100000)): 
-                continue
-
-            ntrigcand += 1
-
-            if not(trigger(road.hits,bc_wind)):
-                continue
-
-            ntrig += 1
+            ntrigcand += trigger(road.hits,100000) 
+            ntrig += trigger(road.hits,bc_wind)
         
 
     print n, ntrigcand, ntrig
@@ -335,15 +317,17 @@ def plttrk(hits, xflag):
     gr.SetMarkerStyle(20);
     gr.SetMarkerSize(1.4);
 
-    grbkg = ROOT.TGraph(len(bkgz), bkgx, bkgz);
-    grbkg.SetTitle("");
-    grbkg.SetMarkerColor(ROOT.kCyan-8);
-    grbkg.SetMarkerStyle(20);
-    grbkg.SetMarkerSize(1.4);
+    if len(bkgz) > 0:
+        grbkg = ROOT.TGraph(len(bkgz), bkgx, bkgz);
+        grbkg.SetTitle("");
+        grbkg.SetMarkerColor(ROOT.kCyan-8);
+        grbkg.SetMarkerStyle(20);
+        grbkg.SetMarkerSize(1.4);
 
 
     mg.Add(gr,"p")
-    mg.Add(grbkg,"p")
+    if len(bkgz) > 0:
+        mg.Add(grbkg,"p")
     for plane in planes:
         mg.Add(plane, "l")
     mg.Draw("a")
