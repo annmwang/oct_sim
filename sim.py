@@ -16,7 +16,7 @@ xhigh = 200.
 ylow = 0.
 yhigh = 217.9
 
-bc_wind = 8
+bc_wind = 2
 mm_eff = [0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]
 sig_art = 32 #ns
 
@@ -26,7 +26,7 @@ UVROAD = 64
 
 muonrate = 1 #Hz
 
-bkgrate = 1 # Hz per square mm
+bkgrate = 100 # Hz per square mm
 
 
 class rates:
@@ -133,23 +133,27 @@ def generate_bkg(start_bc):
 #                         x = np.random.uniform(xlow,xlow + xscan)
 #                         y = np.random.uniform(ylow, ylow+yscan)
 #                         z = myoct.planes[i].originz
-#                         bkghits.append(oct.hit( i, bc, (x,y,z)))
+#                         bkghits.append(oct.hit( i, bc, (x,y,z), False))
 
     # assume uniform distribution of background - correct for noise
     expbkg = rate.bkgrate_bc * bc_wind * plane_area
     nbkg = int(expbkg)
 
-    # deal with rates that are between integers
-    if np.random.uniform(0,1) < (expbkg-int(expbkg)):
-        nbkg += 1
+#     # deal with rates that are between integers
+#     if np.random.uniform(0,1) < (expbkg-int(expbkg)):
+#         nbkg += 1
     
     # need to figure out how to incorporate freq in a better way
     for i in range(NBOARDS):
-        for j in range(nbkg):
+        planebkg = nbkg
+        # deal with rates that are between integers
+        if np.random.uniform(0,1) < (expbkg-int(expbkg)):
+            planebkg += 1
+        for j in range(planebkg):
             x = np.random.uniform(xlow, xhigh)
             y = np.random.uniform(ylow, yhigh)
             z = myoct.planes[i].originz
-            bkghits.append(oct.hit(i, start_bc + np.random.randint(0,bc_wind), (x,y,z)))
+            bkghits.append(oct.hit(i, start_bc + np.random.randint(0,bc_wind), (x,y,z), False))
 
     return bkghits
 
@@ -209,7 +213,7 @@ def main():
             if bit==1:
                 art_time = np.random.normal(400.,sig_art)
                 art_bc[j] = math.floor(art_time / 25.)
-                hits.append(oct.hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j])))
+                hits.append(oct.hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j]),True))
 
         for bc in art_bc:
             if bc == -1:
@@ -224,6 +228,11 @@ def main():
 
         allhits = hits + bkg_hits
 
+        if len(bkg_hits) > 0:
+            print "had bkg hit!"
+            plttrk(allhits,True)
+            plttrk(allhits,False)
+
         if not(trigger(allhits,100000)): 
             continue
 
@@ -237,8 +246,30 @@ def main():
 
     print n, ntrigcand, ntrig
 
-def plttrk(pts,zpts, xflag):
+def plttrk(hits, xflag):
 
+
+    pts = []
+    zpts = []
+    ib = []
+    bkgpts = []
+    bkgzpts = []
+    bkgib = []
+    for hit in hits:
+        if hit.real is True:
+            ib.append(hit.ib)
+            if xflag:
+                pts.append(hit.pos[0])
+            else:
+                pts.append(hit.pos[1])
+            zpts.append(hit.pos[2])
+        else:
+            bkgib.append(hit.ib)
+            if xflag:
+                bkgpts.append(hit.pos[0])
+            else:
+                bkgpts.append(hit.pos[1])
+            bkgzpts.append(hit.pos[2])
 
     setstyle()
     c = ROOT.TCanvas("c", "canvas", 800, 800)
@@ -255,8 +286,22 @@ def plttrk(pts,zpts, xflag):
             x.append(pts[i])
             z.append(zpts[i])
 
+    # same for bkg hits
+    bkgx,bkgz = array('d'), array('d')
+    for i,elem in enumerate(bkgzpts):
+        if bkgpts[i] == -1.: 
+            continue
+        else: 
+            bkgx.append(bkgpts[i])
+            bkgz.append(bkgzpts[i])
+
     # define lines for planes
     planes = []
+    
+    co = 2.7
+    zpos = [-co, 11.2+co, 32.4-co, 43.6+co,
+            113.6-co, 124.8+co, 146.0-co, 157.2+co]
+
     board_x, board_z = array('d'), array('d')
     for k in range(NBOARDS):
         if xflag:
@@ -265,8 +310,8 @@ def plttrk(pts,zpts, xflag):
         else:
             board_x.append(ylow)
             board_x.append(yhigh)
-        board_z.append(zpts[k])
-        board_z.append(zpts[k])
+        board_z.append(zpos[k])
+        board_z.append(zpos[k])
         
         planes.append(ROOT.TGraph(2, board_x, board_z))
         planes[k].SetLineColor(ROOT.kBlue)
@@ -280,8 +325,15 @@ def plttrk(pts,zpts, xflag):
     gr.SetMarkerStyle(20);
     gr.SetMarkerSize(1);
 
+    grbkg = ROOT.TGraph(len(bkgz), bkgx, bkgz);
+    grbkg.SetTitle("");
+    grbkg.SetMarkerColor(ROOT.kCyan-8);
+    grbkg.SetMarkerStyle(20);
+    grbkg.SetMarkerSize(1);
+
 
     mg.Add(gr,"p")
+    mg.Add(grbkg,"p")
     for plane in planes:
         mg.Add(plane, "l")
     mg.Draw("a")

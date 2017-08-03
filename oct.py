@@ -19,10 +19,11 @@ class road:
             return False
 
 class hit:
-    def __init__(self, ind, time, pos):
+    def __init__(self, ind, time, pos, real):
         self.ib = ind
         self.time = time
         self.pos = pos
+        self.real = real # muon or noise
 
 class octplane:
     def __init__(self, ind, alpha, origin):
