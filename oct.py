@@ -24,19 +24,29 @@ class Road:
         self.hits = []
         self.octgeo = myoct
         
-    def in_road(self, hit, roadsize):
+    def in_road(self, hit, roadsize, uvfactor):
         strip = self.octgeo.channel(hit.pos[0],hit.pos[1],hit.ib)
-        slow = roadsize*(self.iroad)
-        shigh = roadsize*(self.iroad+1)
+        if hit.ib > 1 or hit.ib < 6:
+            addstrip = uvfactor*roadsize-roadsize
+            slow = roadsize*(self.iroad)-addstrip/2.
+            shigh = roadsize*(self.iroad+1)+addstrip/2.
+        else:
+            slow = roadsize*(self.iroad)
+            shigh = roadsize*(self.iroad+1)
         if strip >= slow and strip <= shigh:
             self.hits.append(hit)
             return True
         else:
             return False
-    def in_road_neighbors(self, hit, roadsize):
+    def in_road_neighbors(self, hit, roadsize, uvfactor):
         strip = self.octgeo.channel(hit.pos[0],hit.pos[1],hit.ib)
-        slow = roadsize*(self.iroad-1)
-        shigh = roadsize*(self.iroad+2)
+        if hit.ib > 1 or hit.ib < 6:
+            addstrip = uvfactor*roadsize-roadsize
+            slow = roadsize*(self.iroad-1)-uvfactor*roadsize-addstrip
+            shigh = roadsize*(self.iroad+2)+uvfactor*roadsize+addstrip
+        else:
+            slow = roadsize*(self.iroad-1)
+            shigh = roadsize*(self.iroad+2)
         if strip >= slow and strip <= shigh:
             self.hits.append(hit)
             return True
@@ -111,5 +121,5 @@ class Octgeo:
 
     def channel(self, xpos, ypos, ib):
         myplane = self.planes[ib]
-        channel  = ((xpos - myplane.originx - math.tan(myplane.alpha)*(ypos-myplane.originy)) / 0.4 ) + 256.5;
+        channel  = ((xpos - myplane.originx - math.tan(myplane.alpha)*(ypos-myplane.originy-100)) / 0.4 ) + 256.5;
         return channel

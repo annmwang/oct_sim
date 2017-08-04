@@ -17,18 +17,19 @@ xhigh = 200.
 ylow = 0.
 yhigh = 217.9
 
-bc_wind = 4
+bc_wind = 7
 mm_eff = [0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]
 
 sig_art = 32 #ns
 
 # road size
-XROAD = 64
-UVROAD = 64
+XROAD = 8
+UVFACTOR = 3
+UVROAD = XROAD*UVFACTOR
 
 # rates
 muonrate = 1 #Hz
-bkgrate = 100 # Hz per square mm
+bkgrate = 1000 # Hz per square mm = 10 kHz/cm^2
 
 myoct = oct.Octgeo()
 
@@ -41,10 +42,10 @@ class rates:
 
 def cosmic_angle():
     ''' return x, y angle of cosmic, better if it uses the cos^2 distribution '''
-    if np.random.uniform(0,1.) < 0.3:
-        return (0.15,0.15)
-    else:
-        return (0.,0.)
+    xtheta = np.random.normal(0.,0.1)
+    ytheta = np.random.normal(0.,0.1)
+    #return (xtheta, ytheta)
+    return (0,0)
 
 def create_roads():
 
@@ -136,25 +137,22 @@ def finder(hits, roads):
     ''' applies roads '''
     for hit in hits:
         for road in roads:
-            if hit.ib < 2 or hit.ib > 5:
-                road.in_road_neighbors(hit, XROAD)
-            else:
-                # fix this uv road
-                road.in_road_neighbors(hit, UVROAD)
+            road.in_road_neighbors(hit, XROAD, UVFACTOR)
     for road in roads:
         road.sort()
         road.prune(bc_wind)
     return roads
 
-def trigger(hits, bcwindow):
+def trigger(hits, bcwindow, iroad):
     ''' return number of triggers in sliding window '''
     hits_copy = hits[:]
-    n_x1, n_x2, n_uv = 0, 0, 0
     mintime = 99999.
     min_ihit = -1
     nhits = len(hits_copy)
     ntrig = 0
     while nhits > 3:
+        triggered_hits = []
+        n_x1, n_x2, n_uv = 0, 0, 0
         for i, hit in enumerate(hits_copy):
             if hit.time < mintime:
                 mintime = hit.time
@@ -168,7 +166,10 @@ def trigger(hits, bcwindow):
                 n_x2 += 1
             if hit.ib > 1 or hit.ib < 6:
                 n_uv += 1
+            triggered_hits.append(hit)
         if n_x1 > 0 and n_x2 > 0 and n_uv > 1:
+            #title = "snapshot_road%d_"%(iroad) + str(bcwindow) + "_" + str(ntrig)
+            #plttrk(triggered_hits,True, 1, title)
             ntrig += 1
         old_ihits = [i for i, dum in enumerate(hits_copy) if dum.time == mintime]
         for j in sorted(old_ihits, reverse=True):
@@ -180,7 +181,9 @@ def trigger(hits, bcwindow):
                
 def main():
 
-    n = 100
+    n = 1000
+    nmuon_trig = 0
+    neventtrig = 0
     ntrigcand = 0
     ntrig = 0
     
@@ -195,7 +198,7 @@ def main():
         #plttrk(ypos,zpos,False)
     
         oct_hitmask = oct_response(xpos, ypos, zpos)
-
+        
 
         art_bc = [-1]*NBOARDS
         smallest_bc = 99999
@@ -203,12 +206,22 @@ def main():
 
         hits = []
 
+        n_uv, n_x1, n_x2 = 0,0,0
         # smear strip with art resolution
         for j, bit in enumerate(oct_hitmask):
             if bit == 1:
+                if j < 2:
+                    n_x1 += 1
+                elif j > 5:
+                    n_x2 += 1
+                else:
+                    n_uv += 1
                 art_time = np.random.normal(400.,sig_art)
                 art_bc[j] = math.floor(art_time / 25.)
                 hits.append(oct.Hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j]),True))
+
+        if n_x1 > 0 and n_x2 > 0 and n_uv > 0:
+            nmuon_trig += 1
 
         for bc in art_bc:
             if bc == -1:
@@ -222,23 +235,40 @@ def main():
 
         allhits = hits + bkg_hits
 
-        if len(bkg_hits) > 0 and nplot < maxplots:
-            print "had bkg hit!"
-            plttrk(allhits,True)
-            plttrk(allhits,False)
-            nplot += 1
-
         roads = create_roads()
         roads = finder(allhits, roads)
 
+        thisevttrig = 0
+
+        filtered_hits = [] #may include duplicates
         for road in roads:
-            ntrigcand += trigger(road.hits,100000) 
-            ntrig += trigger(road.hits,bc_wind)
-        
+            #title = "road_%d"%(road.iroad)
+            #plttrk(road.hits,True,-1,title)
+            ntrigcand += trigger(road.hits,100000, road.iroad) 
+            ntrigreal = trigger(road.hits,bc_wind, road.iroad)
+            ntrig += ntrigreal
+            thisevttrig += ntrigreal
+            filtered_hits += road.hits #pruned with overlapping, not with bc
+        if len(bkg_hits) > 0 and nplot < maxplots and thisevttrig == 0:
+            file = open("nontrig.txt","w")
+            for road in roads:
+                for hit in road.hits:
+                    file.write("road: %d, bc: %d, board: %d, muon: %d"%(road.iroad, hit.time, hit.ib, int(hit.real)))
+                    file.write("\n")
+            file.write("fin")
+            file.close()
+            print "had bkg hit!"
+            nplot += 1
+        #plttrk(filtered_hits,True, thisevttrig, "filtered")
+        #plttrk(filtered_hits,False, thisevttrig, "filtered")
+        #plttrk(allhits,True, thisevttrig, "all")
+        if thisevttrig != 0:
+            neventtrig += 1
 
     print n, ntrigcand, ntrig
+    print neventtrig, "muons triggered out of", nmuon_trig, "muons"
 
-def plttrk(hits, xflag):
+def plttrk(hits, xflag, ntrig, title):
 
 
     pts = []
@@ -310,12 +340,12 @@ def plttrk(hits, xflag):
         board_x = array('d')
         board_z = array('d')
 
-    
-    gr = ROOT.TGraph(len(z), x, z);
-    gr.SetTitle("Cluster locations");
-    gr.SetMarkerColor(ROOT.kPink+6);
-    gr.SetMarkerStyle(20);
-    gr.SetMarkerSize(1.4);
+    if len(z) > 0:
+        gr = ROOT.TGraph(len(z), x, z);
+        gr.SetTitle("Cluster locations");
+        gr.SetMarkerColor(ROOT.kPink+6);
+        gr.SetMarkerStyle(20);
+        gr.SetMarkerSize(1.4);
 
     if len(bkgz) > 0:
         grbkg = ROOT.TGraph(len(bkgz), bkgx, bkgz);
@@ -324,8 +354,8 @@ def plttrk(hits, xflag):
         grbkg.SetMarkerStyle(20);
         grbkg.SetMarkerSize(1.4);
 
-
-    mg.Add(gr,"p")
+    if len(z)> 0:
+        mg.Add(gr,"p")
     if len(bkgz) > 0:
         mg.Add(grbkg,"p")
     for plane in planes:
@@ -334,12 +364,24 @@ def plttrk(hits, xflag):
     mg.GetXaxis().SetTitleOffset(1.)
     mg.GetYaxis().SetTitleOffset(1.4)
     mg.GetYaxis().SetTitle("z (mm)")
+
+
+    l1 = ROOT.TLatex()
+    l1.SetTextSize(0.03)
+    l1.SetTextColor(ROOT.kBlack)
+    l1.SetTextAlign(21)
+    l1.SetNDC()
+    l1.DrawLatex(0.5,0.5,"ntrig: %d for %d (x), %d (uv) strip roads"%(ntrig,XROAD,UVROAD));
+
+
     if xflag:
         mg.GetXaxis().SetTitle("x (mm)")
-        c.Print("mushroom_x.pdf")
+        ctitle = title + "_x.pdf"
+        c.Print(ctitle)
     else:
         mg.GetXaxis().SetTitle("y (mm)")
-        c.Print("mushroom_y.pdf")
+        ctitle = title + "_y.pdf"
+        c.Print(ctitle)
 
 def setstyle():
     ROOT.gROOT.SetBatch()
