@@ -1,4 +1,5 @@
 import ROOT
+import copy
 import os, sys
 import math, random
 import numpy as np
@@ -17,19 +18,19 @@ xhigh = 200.
 ylow = 0.
 yhigh = 217.9
 
-bc_wind = 7
+bc_wind = 20
 mm_eff = [0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9]
 
 sig_art = 32 #ns
 
 # road size
-XROAD = 8
-UVFACTOR = 3
+XROAD = 8 #8
+UVFACTOR = 8 #8
 UVROAD = XROAD*UVFACTOR
 
 # rates
 muonrate = 1 #Hz
-bkgrate = 1000 # Hz per square mm = 10 kHz/cm^2
+bkgrate = 100 # Hz per square mm = 10 kHz/cm^2
 
 myoct = oct.Octgeo()
 
@@ -44,6 +45,7 @@ def cosmic_angle():
     ''' return x, y angle of cosmic, better if it uses the cos^2 distribution '''
     xtheta = np.random.normal(0.,0.1)
     ytheta = np.random.normal(0.,0.1)
+    #print "(%f,%f)"%(xtheta,ytheta)
     #return (xtheta, ytheta)
     return (0,0)
 
@@ -134,14 +136,48 @@ def oct_response(xpos, ypos, zpos):
     return oct_hitmask
 
 def finder(hits, roads):
-    ''' applies roads '''
-    for hit in hits:
-        for road in roads:
-            road.in_road_neighbors(hit, XROAD, UVFACTOR)
+ 
+    
+    triggers = []
+    ntrigs = 0
+
+    # a useful time window for the event
+    bc_start = min([hit.age for hit in hits]) - bc_wind*2
+    bc_end   = max([hit.age for hit in hits]) + bc_wind*2
+ 
+    slopes = []
+    # each road makes independent triggers
     for road in roads:
-        road.sort()
-        road.prune(bc_wind)
-    return roads
+ 
+        road.reset()
+        
+        #temphits = copy.deepcopy(hits) # WHY DO I NEED THIS??? inexplicable
+
+        for bc in xrange(bc_start, bc_end):
+
+
+            road.increment_age(bc_wind)
+            
+            hits_now = filter(lambda hit: hit.age==bc, hits)
+            hits_now = sorted(hits_now, key=lambda hit: hit.strip)
+
+            road.add_hits(hits_now, XROAD, UVFACTOR)
+
+            #road_copy = copy.deepcopy(road)
+            #print road.iroad, road.count()
+            if road.coincidence(bc_wind):
+                slopes.append((road.count(),road.mxl()))
+                #print "found coincidence!"
+                ntrigs += 1
+                #print road.iroad, road.count()
+                #road.trig = True
+                #triggers.append(road_copy)
+
+    # cav: can only make 8 triggers per BC.
+    #      keep the 8 from lowest-number roads.
+ 
+    return ntrigs,slopes
+    #return triggers
 
 def trigger(hits, bcwindow, iroad):
     ''' return number of triggers in sliding window '''
@@ -190,6 +226,9 @@ def main():
     # plotting stuff
     maxplots = 2
     nplot = 0
+    start = time.time()
+
+    dx = []
 
     for i in range(n):
         xpos, ypos, zpos = generate_muon()
@@ -206,7 +245,7 @@ def main():
 
         hits = []
 
-        n_uv, n_x1, n_x2 = 0,0,0
+        n_u, n_v, n_x1, n_x2 = 0,0,0,0
         # smear strip with art resolution
         for j, bit in enumerate(oct_hitmask):
             if bit == 1:
@@ -214,13 +253,15 @@ def main():
                     n_x1 += 1
                 elif j > 5:
                     n_x2 += 1
+                elif j == 2 or j ==4: 
+                    n_u += 1
                 else:
-                    n_uv += 1
+                    n_v += 1
                 art_time = np.random.normal(400.,sig_art)
-                art_bc[j] = math.floor(art_time / 25.)
+                art_bc[j] = int(math.floor(art_time / 25.))
                 hits.append(oct.Hit(j,art_bc[j],(xpos[j],ypos[j],zpos[j]),True))
 
-        if n_x1 > 0 and n_x2 > 0 and n_uv > 0:
+        if n_x1 > 0 and n_x2 > 0 and n_u > 0 and n_v > 0:
             nmuon_trig += 1
 
         for bc in art_bc:
@@ -230,44 +271,73 @@ def main():
                 smallest_bc = bc
 
         # assume bkg rate has oct_response factored in
+
+        #bkg_hits = []
         bkg_hits = generate_bkg(smallest_bc)
         # change this to 2*bc_wind after
 
         allhits = hits + bkg_hits
 
         roads = create_roads()
-        roads = finder(allhits, roads)
+        #trigroads = finder(allhits, roads)
+        #ntrigroads = len(trigroads)
+        ntrigroads,slopes = finder(allhits,roads)
+        if ntrigroads > 0:
+            try:
+                myslope = sorted(slopes,key=lambda x:x[0], reverse=True)[1]
+                dx.append(np.arctan(myslope[1]))
+            except:
+                print slopes
 
-        thisevttrig = 0
-
-        filtered_hits = [] #may include duplicates
-        for road in roads:
-            #title = "road_%d"%(road.iroad)
-            #plttrk(road.hits,True,-1,title)
-            ntrigcand += trigger(road.hits,100000, road.iroad) 
-            ntrigreal = trigger(road.hits,bc_wind, road.iroad)
-            ntrig += ntrigreal
-            thisevttrig += ntrigreal
-            filtered_hits += road.hits #pruned with overlapping, not with bc
-        if len(bkg_hits) > 0 and nplot < maxplots and thisevttrig == 0:
-            file = open("nontrig.txt","w")
-            for road in roads:
-                for hit in road.hits:
-                    file.write("road: %d, bc: %d, board: %d, muon: %d"%(road.iroad, hit.time, hit.ib, int(hit.real)))
-                    file.write("\n")
-            file.write("fin")
-            file.close()
-            print "had bkg hit!"
-            nplot += 1
-        #plttrk(filtered_hits,True, thisevttrig, "filtered")
-        #plttrk(filtered_hits,False, thisevttrig, "filtered")
-        #plttrk(allhits,True, thisevttrig, "all")
-        if thisevttrig != 0:
+        if ntrigroads > 0:
             neventtrig += 1
+        else:
+            if nplot < maxplots:
+                file = open("nontrig.txt","w")
+                file.write("list of hits\n")
+                for hit in hits:
+                    file.write("hit: %d, %d, %d, bc: %d"%(hit.pos[0], hit.pos[1], hit.pos[2], hit.age))
+                    file.write("\n")
+#                 for road in original_roads:
+#                     for bo in xrange(NBOARDS):
+#                         if road.hits[bo]:
+#                             file.write("road: %d, bc: %d, board: %d, muon: %d"%(road.hits[bo].iroad, road.hits[bo].age, bo, int(road.hits[bo].real)))
+#                             file.write("\n")
+                file.write("fin")
+                file.close()
+                nplot += 1
+        nt = 0
+        ntrig += ntrigroads
+        
+#         for road in trigroads:
+#             nt += 1
+#             #print "n:%d"%(road.count())
+#             acchits = []
+#             for bo in xrange(NBOARDS):
+#                 if road.hits[bo]:
+#                     acchits.append(road.hits[bo])
+#             title = "road_" + str(road.iroad) + "_%d"%(nt)
+#             if len(acchits) > 0:
+#                 plttrk(acchits,True, -1, title)
+        if i % 10 == 0: 
+            progress(time.time()-start, i, n)
 
-    print n, ntrigcand, ntrig
+    print n, ntrig
     print neventtrig, "muons triggered out of", nmuon_trig, "muons"
-
+    pltres(dx,"mxres")
+def pltres(data, title):
+    h1 = ROOT.TH1F("h1", title, 100, -100, 100)
+    for i in data:
+        h1.Fill(i*1000)
+    setstyle()
+    h1.GetXaxis().SetTitle("#Delta#theta (mrad)")
+    h1.GetYaxis().SetTitle("Events")
+    h1.SetTitle("")
+    c = ROOT.TCanvas("c", "canvas", 800, 800)
+    c.cd()
+    h1.Draw()
+    fulltitle = title + ".pdf"
+    c.Print(fulltitle)
 def plttrk(hits, xflag, ntrig, title):
 
 
@@ -395,6 +465,15 @@ def setstyle():
     ROOT.gStyle.SetPaintTextFormat(".2f")
     ROOT.gStyle.SetTextFont(42)
     ROOT.gStyle.SetOptFit(ROOT.kTRUE)
+
+def progress(time_diff, nprocessed, ntotal):
+    import sys
+    nprocessed, ntotal = float(nprocessed), float(ntotal)
+    rate = (nprocessed+1)/time_diff
+    msg = "\r > %6i / %6i | %2i%% | %8.2fHz | %6.1fm elapsed | %6.1fm remaining"
+    msg = msg % (nprocessed, ntotal, 100*nprocessed/ntotal, rate, time_diff/60, (ntotal-nprocessed)/(rate*60))
+    sys.stdout.write(msg)
+    sys.stdout.flush()
 
 if __name__=="__main__":
     main()
