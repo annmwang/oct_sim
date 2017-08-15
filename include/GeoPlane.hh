@@ -30,7 +30,7 @@ public:
   void SetOrigin(const TVector3& p);
   void SetStripAlpha(double alpha);
 
-  double channel_from_x_mid(double xpos) const;
+  double channel_from_pos(double xpos, double ypos) const;
 
 private:
   TVector3 m_Origin;
@@ -90,8 +90,8 @@ inline void GeoPlane::SetStripAlpha(double alpha){
   m_Alpha = alpha;
 }
 
-inline double GeoPlane::channel_from_x_mid(double xpos) const{
-  return  ((xpos - m_Origin.X() - tan(m_Alpha)*100) / (0.4)) + 256.5;
+inline double GeoPlane::channel_from_pos(double xpos, double ypos) const{
+  return  ((xpos - m_Origin.X() - tan(m_Alpha)*( ypos - m_Origin.Y() )) / (0.4)) + 256.5;
 }
 
 #endif

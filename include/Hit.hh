@@ -73,7 +73,7 @@ inline int Hit::MMFE8Index() const {
 }
 
 inline double Hit::Channel() const{
-  return m_geometry->Get(m_MMFE8index).channel_from_x_mid(m_x_pos);
+  return m_geometry->Get(m_MMFE8index).channel_from_pos(m_x_pos,m_y_pos);
 }
 
 inline int Hit::Age() {
