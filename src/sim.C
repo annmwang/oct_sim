@@ -1,0 +1,367 @@
+// C++ includes
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
+#include <stdio.h>
+#include <dirent.h>
+#include <ctime>
+#include <bitset>
+#include <cmath>
+#include <chrono>
+
+// ROOT includes
+#include <TROOT.h>
+#include <TFile.h>
+#include <TTree.h>
+#include <TChain.h>
+#include <TH1F.h>
+#include <TCanvas.h>
+#include <TRandom3.h>
+#include <TMath.h>
+#include <GeoOctuplet.hh>
+#include <Hit.hh>
+#include <Road.hh>
+#include <TStyle.h>
+
+using namespace std;
+
+TRandom3 *ran = new TRandom3;
+
+bool db = false;
+
+int NBOARDS = 8;
+int NSTRIPS = 512;
+  
+double xlow = 0.;
+double xhigh = 200.;
+double ylow = 0.;
+double yhigh = 217.9;
+
+int bc_wind = 20;
+double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
+
+double sig_art = 32.;
+
+// road size
+
+int XROAD = 8;
+int UVFACTOR = 8;
+int UVROAD = XROAD*UVFACTOR;
+
+// rates
+
+int muonrate = 1;
+int bkgrate = 100; // Hz per square mm = 10 kHz/cm^2
+
+
+struct slope_t {
+  int count;
+  double mxl;
+};
+
+
+tuple<double,double> cosmic_angle(){
+  return make_tuple(0.,0.);
+}
+
+vector<Road*> create_roads(const GeoOctuplet& geometry){
+  if (NSTRIPS % XROAD != 0)
+    cout << "Not divisible!" << endl;
+  int nroad = NSTRIPS/XROAD;
+  vector<Road*> m_roads;
+  for (int i = 0; i < nroad; i++){
+    Road* myroad = nullptr;
+    myroad = new Road(i, geometry);
+    m_roads.push_back(myroad);
+  }
+  return m_roads;
+}
+
+void generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
+
+  double x = ran->Uniform(xlow,xhigh);
+  double y = ran->Uniform(ylow,yhigh);
+  double thx, thy;
+
+  std::tie(thx,thy) = cosmic_angle();
+
+  double avgz = 0.5*(zpos[0]+zpos[NBOARDS-1]);
+  int z, x_b, y_b;
+  for (int j = 0; j < NBOARDS; j++){
+    z = zpos[j];
+    x_b = TMath::Tan(thx)*(zpos[j]-avgz)+x;
+    y_b = TMath::Tan(thy)*(zpos[j]-avgz)+y;
+    xpos[j] = x_b;
+    ypos[j] = y_b;
+  }    
+}
+
+vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry){
+
+  double plane_area = (xhigh-xlow) * (yhigh-ylow);
+  vector<Hit*> bkghits;
+
+  
+  int noise_window = bc_wind * 3;
+  int start_noise = start_bc - bc_wind;
+  int end_noise = start_bc + bc_wind * 2 -1;
+
+  //assume uniform distribution of background - correct for noise
+  double bkgrate_bc = bkgrate / (4.*pow(10,7));
+  double expbkg = bkgrate_bc * noise_window  * plane_area;
+
+
+  for (int j = 0; j < NBOARDS; j++){
+    int nbkg = ran->Poisson(expbkg);
+    double x, y;
+    for (int k = 0; k < nbkg; k++){
+      x = ran->Uniform(xlow, xhigh);
+      y = ran->Uniform(ylow, yhigh);
+      Hit* newhit = nullptr;
+      newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), x,y,false, geometry);
+      bkghits.push_back(newhit);
+    }
+  }
+  return bkghits;
+
+}
+
+vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
+  //gives detector response to muon, returns list of which planes registered hit
+  
+  int n_mm = 0;
+  vector<int> oct_hitmask(NBOARDS,0);
+  for (int j=0; j < NBOARDS; j++){
+    if (ran->Uniform(0.,1.) < mm_eff[j]){
+      oct_hitmask[j] = 1;
+      n_mm++;
+    }
+  }
+  return oct_hitmask;
+}
+
+vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
+  int ntrigs = 0;
+  int bc_start = 999999;
+  int bc_end = -1;
+
+  vector<slope_t> slopes;
+
+  for (int i=0; i < hits.size(); i++){
+    if (hits[i]->Age() < bc_start)
+      bc_start = hits[i]->Age();
+    if (hits[i]->Age() > bc_end)
+      bc_end = hits[i]->Age();
+  }
+  bc_start = bc_start - bc_wind*2;
+  bc_end = bc_end + bc_wind*2;
+
+
+  // each road makes independent triggers
+  for (int i = 0; i < roads.size(); i++){
+
+    roads[i]->Reset();
+
+    vector<Hit*> hits_now;
+
+    for (int bc = bc_start; bc < bc_end; bc++){
+      //cout << "bunch crossing: " << bc << endl;
+      hits_now.clear();
+
+      roads[i]->Increment_Age(bc_wind);
+
+      for (int j = 0; j < hits.size(); j++){
+        // BC window
+        if (hits[j]->Age() == bc){
+          // add into hits_now so that it is sorted by strip number
+          bool added_hit = false;
+          for (int k = 0; k < hits_now.size(); k++){
+            if (hits_now[k]->Channel() > hits[j]->Channel()){
+              hits_now.insert(hits_now.begin()+k,hits[j]);
+              added_hit = true;
+              break;
+            }
+          }
+          if (!added_hit)
+            hits_now.push_back(hits[j]);
+        }
+      }
+
+      //cout << "nhits to be added: "<<hits_now.size() << endl;
+      roads[i]->Add_Hits(hits_now, XROAD, UVFACTOR);
+
+      if (roads[i]->Coincidence(bc_wind)){
+        ntrigs++;
+        slope_t m_slope;
+        m_slope.count = roads[i]->Count();
+        m_slope.mxl = roads[i]->Mxl();
+        slopes.push_back(m_slope);
+      }
+    }
+  }
+  return slopes;
+}
+
+void setstyle(){
+  gROOT->SetBatch();
+  gStyle->SetOptStat(0);
+  gStyle->SetPadTopMargin(0.1);
+  gStyle->SetPadRightMargin(0.13);
+  gStyle->SetPadBottomMargin(0.12);
+  gStyle->SetPadLeftMargin(0.2);
+  gStyle->SetPadTickX(1);
+  gStyle->SetPadTickY(1);
+  gStyle->SetPaintTextFormat(".2f");
+  gStyle->SetTextFont(42);
+  //  gStyle->SetOptFit(kTRUE);
+}
+
+int main(int argc, char* argv[]) {
+  char inputFileName[400];
+  char outputFileName[400];
+
+//   if ( argc < 2 ){
+//     cout << "Error at Input: please specify an input .dat file";
+//     cout << " and an output filename" << endl;
+//     cout << "Example:   ./tpfit2root input_file.dat -r runnumber" << endl;
+//     return 1;
+//   }
+//   bool user_output = false;
+//   int RunNum = -1;
+//   for (int i=0;i<argc;i++){
+//     sscanf(argv[1],"%s", inputFileName);
+//     if (strncmp(argv[i],"-o",2)==0){
+//       sscanf(argv[i+1],"%s", outputFileName);
+//       user_output = true;
+//     }
+//     if (strncmp(argv[i],"-r",2)==0){
+//       RunNum = atoi(argv[i+1]);
+//     }
+//   }
+//   if(!user_output)
+//     sprintf(outputFileName,"%s.root",inputFileName);
+
+//   cout << "Input File:  " << inputFileName << endl;
+//   cout << "Output File: " << outputFileName << endl;
+//   cout << "Run Number: " << RunNum << endl;
+
+
+  int nevents = 10000;
+
+  GeoOctuplet* GEOMETRY = new GeoOctuplet();
+
+  // counters
+  int nmuon_trig = 0;
+  int neventtrig = 0;
+
+  // book histos
+  TH1F * h_mxres = new TH1F("h_mxres", "#DeltaX", 100, -100, 100);
+
+
+  for (int i = 0; i < nevents; i++){
+
+    // generate muon
+    double co = 2.7;
+    vector<double> zpos = {-co, 11.2+co, 32.4-co, 43.6+co, 
+                           113.6-co, 124.8+co, 146.0-co, 157.2+co};
+    vector<double> xpos(NBOARDS,-1.);
+    vector<double> ypos(NBOARDS,-1.);
+    
+    generate_muon(xpos,ypos,zpos);
+
+    vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
+  
+    vector<int> art_bc(NBOARDS, -1.);
+    double smallest_bc = 999999.;
+    
+    vector<Hit*> hits;
+
+    int n_u = 0;
+    int n_v = 0;
+    int n_x1 = 0;
+    int n_x2 = 0;
+    
+    double art_time;
+  
+    for (int j = 0; j < NBOARDS; j++){
+      if (oct_hitmask[j] == 1){
+        if (j < 2)
+          n_x1++;
+        else if (j > 5)
+          n_x2++;
+        else if (j == 2|| j ==4)
+          n_u++;
+        else
+          n_v++;
+      art_time = ran->Gaus(400.,sig_art);
+      art_bc[j] = (int)floor(art_time/25.);
+      Hit* newhit = nullptr;
+      newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
+      hits.push_back(newhit);
+      }
+    }
+
+    if (db)
+      cout << "N muonhits: " << hits.size() << endl;
+    
+    if (n_x1 > 0 && n_x2 > 0 && n_u > 0 && n_v > 0)
+      nmuon_trig++;
+
+    for (int j = 0; j < art_bc.size(); j++){
+      if (art_bc[j] == -1)
+        continue;
+      else if (art_bc[j] < smallest_bc)
+        smallest_bc = art_bc[j];
+    }
+
+    // assume bkg rate has oct_response factored in!
+    
+    vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY);
+    if (db)
+      cout << "Nbkg hits: " << bkghits.size() << endl;
+    vector<Road*> m_roads = create_roads(*GEOMETRY);
+    if (db)
+      cout << "Number of roads: " << m_roads.size() << endl;
+
+    vector<Hit*> all_hits = hits;
+    all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
+
+    if (db)
+      cout << "Total number of hits: " << all_hits.size() << endl;
+
+    vector<slope_t> m_slopes = finder(all_hits, m_roads);
+    int ntrigroads = m_slopes.size();
+    if (db)
+      cout << "Ntriggered roads: " << ntrigroads << endl;
+    if (ntrigroads == 0)
+      continue;
+    slope_t myslope;
+    myslope.mxl = 0.;
+    myslope.count = 0;
+    int myslopecount = 0;
+    for (int j = 0; j < m_slopes.size(); j++){
+      if (m_slopes[j].count > myslope.count){
+        myslope.count = m_slopes[j].count;
+        myslope.mxl = m_slopes[j].mxl;
+      }
+    }
+    double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
+    //cout << "delta x " << deltaMX*1000. << endl;
+
+    h_mxres->Fill(deltaMX*1000.);
+    neventtrig++;
+
+  }
+  cout << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger"<< endl;
+
+  setstyle();
+  h_mxres->GetXaxis()->SetTitle("#Delta#theta (mrad)");
+  h_mxres->GetYaxis()->SetTitle("Events");
+  h_mxres->SetTitle("");
+  TCanvas * c = new TCanvas("c", "canvas", 800, 800);
+  c->cd();
+  h_mxres->Draw();
+  c->Print("mxres.pdf");
+  return 0;
+}
