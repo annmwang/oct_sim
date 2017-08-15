@@ -45,8 +45,8 @@ double sig_art = 32.;
 
 // road size
 
-int XROAD = 8;
-int UVFACTOR = 8;
+int XROAD = 64;
+int UVFACTOR = 1;
 int UVROAD = XROAD*UVFACTOR;
 
 // rates
@@ -217,35 +217,7 @@ void setstyle(){
   //  gStyle->SetOptFit(kTRUE);
 }
 
-int main(int argc, char* argv[]) {
-  char inputFileName[400];
-  char outputFileName[400];
-
-//   if ( argc < 2 ){
-//     cout << "Error at Input: please specify an input .dat file";
-//     cout << " and an output filename" << endl;
-//     cout << "Example:   ./tpfit2root input_file.dat -r runnumber" << endl;
-//     return 1;
-//   }
-//   bool user_output = false;
-//   int RunNum = -1;
-//   for (int i=0;i<argc;i++){
-//     sscanf(argv[1],"%s", inputFileName);
-//     if (strncmp(argv[i],"-o",2)==0){
-//       sscanf(argv[i+1],"%s", outputFileName);
-//       user_output = true;
-//     }
-//     if (strncmp(argv[i],"-r",2)==0){
-//       RunNum = atoi(argv[i+1]);
-//     }
-//   }
-//   if(!user_output)
-//     sprintf(outputFileName,"%s.root",inputFileName);
-
-//   cout << "Input File:  " << inputFileName << endl;
-//   cout << "Output File: " << outputFileName << endl;
-//   cout << "Run Number: " << RunNum << endl;
-
+int main() {
 
   int nevents = 10000;
 

@@ -16,11 +16,15 @@ HH_FILES := $(wildcard include/*.hh)
 OBJ_FILES := $(addprefix $(OUTOBJ),$(notdir $(CC_FILES:.cc=.o)))
 DICT_FILES := $(wildcard include/*.pcm)
 
-all: sim
+all: sim testGBT
 
 sim:  $(SRCDIR)sim.C $(OBJ_FILES) $(HH_FILES) 
 	$(CXX) $(CXXFLAGS) -o sim $ $< $(GLIBS) 
 	touch sim
+
+testGBT:  $(SRCDIR)testGBT.C $(OBJ_FILES) $(HH_FILES) 
+	$(CXX) $(CXXFLAGS) -o testGBT $ $< $(GLIBS) 
+	touch testGBT
 
 $(OUTOBJ)%.o: src/%.cc include/%.hh
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -30,3 +34,4 @@ clean:
 	rm -f $(OUTOBJ)*.o
 	rm -rf *.dSYM
 	rm -f sim
+	rm -f testGBT 
