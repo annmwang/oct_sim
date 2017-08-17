@@ -35,29 +35,36 @@ int NSTRIPS = 512;
   
 double xlow = 0.;
 double xhigh = 200.;
-double ylow = 0.;
+double ylow = 17.9;
 double yhigh = 217.9;
 
-int bc_wind = 20;
+double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+
+
+int bc_wind = 8;
 double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
 double sig_art = 32.;
 
 // road size
 
-int XROAD = 8;
-int UVFACTOR = 8;
+int XROAD = 64;
+int UVFACTOR = 1;
 int UVROAD = XROAD*UVFACTOR;
 
 // rates
 
 int muonrate = 1;
-int bkgrate = 100; // Hz per square mm = 10 kHz/cm^2
+int bkgrate = 11; // Hz per square mm = 10 kHz/cm^2
+
+
 
 
 struct slope_t {
   int count;
   double mxl;
+  double xavg;
+  double yavg;
 };
 
 
@@ -78,16 +85,17 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
   return m_roads;
 }
 
-void generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
+tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
 
   double x = ran->Uniform(xlow,xhigh);
   double y = ran->Uniform(ylow,yhigh);
+
   double thx, thy;
 
   std::tie(thx,thy) = cosmic_angle();
 
   double avgz = 0.5*(zpos[0]+zpos[NBOARDS-1]);
-  int z, x_b, y_b;
+  double z, x_b, y_b;
   for (int j = 0; j < NBOARDS; j++){
     z = zpos[j];
     x_b = TMath::Tan(thx)*(zpos[j]-avgz)+x;
@@ -95,6 +103,7 @@ void generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> 
     xpos[j] = x_b;
     ypos[j] = y_b;
   }    
+  return make_tuple(x,y);
 }
 
 vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry){
@@ -192,10 +201,24 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
       roads[i]->Add_Hits(hits_now, XROAD, UVFACTOR);
 
       if (roads[i]->Coincidence(bc_wind)){
+        if (db){
+        cout << "---------------------------" << endl;
+        cout << "FOUND COINCIDENCE @ BC " << bc << endl;
+        cout << "Road (i,count): ("<< roads[i]->iRoad() <<", " << roads[i]->Count()<<")" << endl;
+        cout << "---------------------------" << endl;
+        for (int k = 0; k < roads[i]->Hits().size(); k++){
+          printf("Hit (board, BC, strip): (%d,%d,%4.4f)", roads[i]->Hits()[k].MMFE8Index(),roads[i]->Hits()[k].Age(),roads[i]->Hits()[k].Channel());
+          cout << endl;
+          //          cout << "Hit (board, BC, strip): (" << roads[i]->Hits()[k].MMFE8Index() <<", "<< roads[i]->Hits()[k].Age() << ", " << roads[i]->Hits()[k].Channel()<<")"<< endl;
+        }
+        }
         ntrigs++;
         slope_t m_slope;
+
         m_slope.count = roads[i]->Count();
         m_slope.mxl = roads[i]->Mxl();
+        m_slope.xavg = roads[i]->AvgXofX();
+        m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + 217.9;
         slopes.push_back(m_slope);
       }
     }
@@ -217,37 +240,14 @@ void setstyle(){
   //  gStyle->SetOptFit(kTRUE);
 }
 
-int main(int argc, char* argv[]) {
-  char inputFileName[400];
-  char outputFileName[400];
+int main() {
 
-//   if ( argc < 2 ){
-//     cout << "Error at Input: please specify an input .dat file";
-//     cout << " and an output filename" << endl;
-//     cout << "Example:   ./tpfit2root input_file.dat -r runnumber" << endl;
-//     return 1;
-//   }
-//   bool user_output = false;
-//   int RunNum = -1;
-//   for (int i=0;i<argc;i++){
-//     sscanf(argv[1],"%s", inputFileName);
-//     if (strncmp(argv[i],"-o",2)==0){
-//       sscanf(argv[i+1],"%s", outputFileName);
-//       user_output = true;
-//     }
-//     if (strncmp(argv[i],"-r",2)==0){
-//       RunNum = atoi(argv[i+1]);
-//     }
-//   }
-//   if(!user_output)
-//     sprintf(outputFileName,"%s.root",inputFileName);
+  cout << endl;
+  cout << "Using BCID window: " << bc_wind << endl;
+  cout << endl;
 
-//   cout << "Input File:  " << inputFileName << endl;
-//   cout << "Output File: " << outputFileName << endl;
-//   cout << "Run Number: " << RunNum << endl;
-
-
-  int nevents = 10000;
+  int nevents = 1000;
+  cout << "Generating " << nevents << " events" << endl;
 
   GeoOctuplet* GEOMETRY = new GeoOctuplet();
 
@@ -257,6 +257,8 @@ int main(int argc, char* argv[]) {
 
   // book histos
   TH1F * h_mxres = new TH1F("h_mxres", "#DeltaX", 100, -100, 100);
+  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 100, -20, 20);
+  TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 100, -20, 20);
 
 
   for (int i = 0; i < nevents; i++){
@@ -268,8 +270,11 @@ int main(int argc, char* argv[]) {
     vector<double> xpos(NBOARDS,-1.);
     vector<double> ypos(NBOARDS,-1.);
     
-    generate_muon(xpos,ypos,zpos);
-
+    double xmuon,ymuon;
+    std::tie(xmuon,ymuon) = generate_muon(xpos,ypos,zpos);
+    if (db){
+      printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
+    }
     vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
   
     vector<int> art_bc(NBOARDS, -1.);
@@ -339,17 +344,31 @@ int main(int argc, char* argv[]) {
     slope_t myslope;
     myslope.mxl = 0.;
     myslope.count = 0;
+    myslope.xavg = 0.;
+    myslope.yavg = 0.;
     int myslopecount = 0;
     for (int j = 0; j < m_slopes.size(); j++){
       if (m_slopes[j].count > myslope.count){
         myslope.count = m_slopes[j].count;
         myslope.mxl = m_slopes[j].mxl;
+        myslope.xavg = m_slopes[j].xavg;
+        myslope.yavg = m_slopes[j].yavg;
       }
     }
+
     double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
     //cout << "delta x " << deltaMX*1000. << endl;
-
+    if (db) {
+      printf ("art (x,y): (%4.4f,%4.4f)", myslope.xavg, myslope.yavg);
+      cout << endl;
+      cout << endl;
+    }
+    //      cout << "art (x,y): (" << myslope.xavg << "," << myslope.yavg << ")"<< endl;
     h_mxres->Fill(deltaMX*1000.);
+    h_yres->Fill(myslope.yavg-ymuon);
+    h_xres->Fill(myslope.xavg-xmuon);
+
+
     neventtrig++;
 
   }
@@ -363,5 +382,21 @@ int main(int argc, char* argv[]) {
   c->cd();
   h_mxres->Draw();
   c->Print("mxres.pdf");
+  c->Clear();
+  h_yres->GetXaxis()->SetTitle("#Deltay (mm)");
+  h_yres->GetYaxis()->SetTitle("Events");
+  h_yres->SetTitle("");
+  c->cd();
+  h_yres->Draw();
+  c->Print("yres.pdf");
+  c->Clear();
+
+  h_xres->GetXaxis()->SetTitle("#Deltax (mm)");
+  h_xres->GetYaxis()->SetTitle("Events");
+  h_xres->SetTitle("");
+  c->cd();
+  h_xres->Draw();
+  c->Print("xres.pdf");
+
   return 0;
 }

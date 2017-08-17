@@ -12,6 +12,7 @@
 #define GeoPlane_HH
 
 #include "TVector3.h"
+#include "TMath.h"
 
 class GeoPlane {
 
@@ -26,6 +27,8 @@ public:
   TVector3 const& nZ() const;
   double StripAlpha() const;
 
+  double LocalXatYbegin(double channel) const;
+  double LocalXatYend(double channel) const;
   
   void SetOrigin(const TVector3& p);
   void SetStripAlpha(double alpha);
@@ -91,7 +94,17 @@ inline void GeoPlane::SetStripAlpha(double alpha){
 }
 
 inline double GeoPlane::channel_from_pos(double xpos, double ypos) const{
-  return  ((xpos - m_Origin.X() - tan(m_Alpha)*( ypos - m_Origin.Y() )) / (0.4)) + 256.5;
+  double channel = ((xpos - m_Origin.X()- TMath::Tan(m_Alpha) * (m_Origin.Y()+100.-ypos)) / (0.4)) + 256.5;
+  channel = round(channel);
+  return channel;
+}
+
+inline double GeoPlane::LocalXatYbegin(double channel) const {
+  return (channel-256.5)*0.4 + TMath::Tan(m_Alpha)*200.;
+}
+
+inline double GeoPlane::LocalXatYend(double channel) const {
+  return (channel-256.5)*0.4;
 }
 
 #endif

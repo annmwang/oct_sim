@@ -17,6 +17,7 @@ class Hit {
 public:
   Hit();
   Hit(int ib, int age, double xpos, double ypos, bool is_noise, const GeoOctuplet& geometry);
+  Hit(int ib, int age, double strip, bool is_noise, const GeoOctuplet& geometry);
   ~Hit();
 
   int MMFE8Index() const;
@@ -40,6 +41,7 @@ private:
   int m_Age;
   double m_x_pos;
   double m_y_pos;
+  double m_strip;
   bool m_IsNoise;
 
   const GeoOctuplet* m_geometry;
@@ -53,6 +55,7 @@ inline Hit::Hit(){
   m_y_pos = -1;
   m_IsNoise = false;
   m_geometry = nullptr;
+  m_strip = -1;
 }
 
 inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const GeoOctuplet& geometry){
@@ -62,6 +65,18 @@ inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const 
   m_y_pos = ypos;
   m_IsNoise = is_noise;
   m_geometry = &geometry;
+  //  std::cout << "for board: " << ib << std::endl;
+  m_strip = m_geometry->Get(ib).channel_from_pos(xpos,ypos);
+}
+
+inline Hit::Hit(int ib, int age, double strip, bool is_noise, const GeoOctuplet& geometry){
+  m_MMFE8index = ib;
+  m_Age = age;
+  m_x_pos = -1.;
+  m_y_pos = -1.;
+  m_IsNoise = is_noise;
+  m_geometry = &geometry;
+  m_strip = strip;
 }
 
 inline Hit::~Hit(){
@@ -73,7 +88,7 @@ inline int Hit::MMFE8Index() const {
 }
 
 inline double Hit::Channel() const{
-  return m_geometry->Get(m_MMFE8index).channel_from_pos(m_x_pos,m_y_pos);
+  return m_strip;
 }
 
 inline int Hit::Age() {
@@ -100,6 +115,7 @@ inline int Hit::isV() const {
 inline void Hit::SetPos(double xpos, double ypos, int ib){
   m_x_pos = xpos;
   m_y_pos = ypos;
+  m_strip =  m_geometry->Get(ib).channel_from_pos(m_x_pos,m_y_pos);
   m_MMFE8index = ib;
 }
 

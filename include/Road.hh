@@ -1,10 +1,10 @@
 ///
 ///  \file   Road.hh
 ///
-///  \author Christopher Rogan
-///          (crogan@cern.ch)
+///  \author Ann Wang
+///          (anwang@cern.ch)
 ///
-///  \date   2016 Sept
+///  \date   2017 Aug
 ///
 
 
@@ -24,6 +24,7 @@ public:
   int iRoad();
   int Count();
   void Reset();
+  int Offset(int ib);
   bool Contains(const Hit& hit, int roadsize, int uvfactor);
   bool Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor);
   void Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor);
@@ -33,6 +34,16 @@ public:
   bool Stereo_ok();
   bool Mature(int wind);
   double Mxl();
+  double Xpos(double ch, int ib);
+  double AvgXofX();
+  double AvgXofU();
+  double AvgXofV();
+  double AvgZofX();
+  double AvgZofU();
+  double AvgZofV();
+  std::vector<Hit> Hits();
+
+
 private:
   int m_iroad;
   std::vector<Hit> m_hits;
@@ -67,6 +78,15 @@ inline void Road::Reset(){
   m_hits.clear();
 }
 
+inline int Road::Offset(int ib){
+  if (ib == 2 || ib == 4)
+    return -6;
+  else if (ib == 3 || ib == 5)
+    return 7;
+  else
+    return 0;
+}
+
 inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
   int addstrip; 
   double slow, shigh;
@@ -79,7 +99,9 @@ inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
     slow = roadsize*m_iroad;
     shigh = roadsize*(m_iroad+1);
   }
-  if (hit.Channel()>=slow && hit.Channel() <= shigh)
+  int strip = hit.Channel();
+  strip += Offset(hit.MMFE8Index());
+  if (strip >= slow && strip <= shigh)
     return true;
   else
     return false;
@@ -97,7 +119,11 @@ inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor)
     slow = roadsize*(m_iroad-1);
     shigh = roadsize*(m_iroad+2);
   }
-  if (hit.Channel()>=slow && hit.Channel() <= shigh)
+  int strip = hit.Channel();
+  strip += Offset(hit.MMFE8Index());
+//   std::cout << "strip from iboard, bcid: " << strip << ", "<< hit.MMFE8Index() << ", " << std::endl; 
+//   std::cout << "looking @ iRoad " << iRoad() <<" ["<<slow <<", " << shigh << "]"<< std::endl;
+  if (strip >= slow && strip <= shigh)
     return true;
   else
     return false;
@@ -112,6 +138,7 @@ inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor)
       for (int j = 0; j < m_hits.size(); j++){
         if (m_hits[j].MMFE8Index() == bo){
           has_hit = true;
+          //std::cout << "already has hit on plane: " << bo << std::endl;
           break;
         }
       }
@@ -123,10 +150,17 @@ inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor)
   }
 }
 void Road::Increment_Age(int wind){
+  int nlost = 0;
+  std::vector<int> old_ihits;
   for (int j = 0; j < m_hits.size(); j++){
     m_hits[j].SetAge(m_hits[j].Age()+1);
-    if (m_hits[j].Age() > wind)
-      m_hits.erase(m_hits.begin()+j);
+    if (m_hits[j].Age() > wind){
+      old_ihits.push_back(j);
+      nlost++;
+    }
+  }
+  for (int j = old_ihits.size()-1; j > -1; j--){
+    m_hits.erase(m_hits.begin()+j);
   }
 }
 
@@ -190,6 +224,116 @@ double Road::Mxl(){
   return mxl;
 }
 
+double Road::Xpos(double ch, int ib){
+  double xpos = m_geometry->Get(ib).LocalXatYend(ch)+m_geometry->Get(ib).Origin().X();
+  return xpos;
+}
+
+double Road::AvgXofX(){
+  // avg x over x boards
+
+  std::vector<double> xs;
+  std::vector<double> zs;
+  for (int i = 0; i < m_hits.size(); i++){
+    int bo = m_hits[i].MMFE8Index();
+    if (bo < 2 || bo > 5){
+      double vmm_ch = Xpos(m_hits[i].Channel(),bo);
+      xs.push_back(vmm_ch);
+      zs.push_back(m_geometry->Get(bo).Origin().Z());
+    }
+  }
+  double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
+  return avg_x;
+}
+
+double Road::AvgXofU(){
+  // avg x over u boards
+
+  std::vector<double> xs;
+  std::vector<double> zs;
+  for (int i = 0; i < m_hits.size(); i++){
+    int bo = m_hits[i].MMFE8Index();
+    if (bo == 2 || bo == 4){
+      double vmm_ch = Xpos(m_hits[i].Channel(),bo);
+      xs.push_back(vmm_ch);
+      zs.push_back(m_geometry->Get(bo).Origin().Z());
+    }
+  }
+  double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
+  return avg_x;
+}
+
+double Road::AvgXofV(){
+  // avg x over v boards
+
+  std::vector<double> xs;
+  std::vector<double> zs;
+  for (int i = 0; i < m_hits.size(); i++){
+    int bo = m_hits[i].MMFE8Index();
+    if (bo == 3 || bo == 5){
+      double vmm_ch = Xpos(m_hits[i].Channel(),bo);
+      xs.push_back(vmm_ch);
+      zs.push_back(m_geometry->Get(bo).Origin().Z());
+    }
+  }
+  double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
+  return avg_x;
+}
+
+double Road::AvgZofX(){
+  // avg z over x boards
+
+  std::vector<double> xs;
+  std::vector<double> zs;
+  for (int i = 0; i < m_hits.size(); i++){
+    int bo = m_hits[i].MMFE8Index();
+    if (bo < 2 || bo > 5){
+      double vmm_ch = m_hits[i].Channel()* 0.4;
+      xs.push_back(vmm_ch);
+      zs.push_back(m_geometry->Get(bo).Origin().Z());
+    }
+  }
+  double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
+  return avg_z;
+}
+
+double Road::AvgZofU(){
+  // avg z over u boards
+
+  std::vector<double> xs;
+  std::vector<double> zs;
+  for (int i = 0; i < m_hits.size(); i++){
+    int bo = m_hits[i].MMFE8Index();
+    if (bo == 2 || bo == 4){
+      double vmm_ch = m_hits[i].Channel()* 0.4;
+      xs.push_back(vmm_ch);
+      zs.push_back(m_geometry->Get(bo).Origin().Z());
+    }
+  }
+  double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
+  return avg_z;
+}
+
+double Road::AvgZofV(){
+  // avg z over v boards
+
+  std::vector<double> xs;
+  std::vector<double> zs;
+  for (int i = 0; i < m_hits.size(); i++){
+    int bo = m_hits[i].MMFE8Index();
+    if (bo == 3 || bo == 5){
+      double vmm_ch = m_hits[i].Channel()* 0.4;
+      xs.push_back(vmm_ch);
+      zs.push_back(m_geometry->Get(bo).Origin().Z());
+    }
+  }
+  double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
+  return avg_z;
+}
+
+std::vector<Hit> Road::Hits(){
+  return m_hits;
+}
 #endif
 
 
