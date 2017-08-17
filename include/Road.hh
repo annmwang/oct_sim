@@ -34,6 +34,7 @@ public:
   bool Stereo_ok();
   bool Mature(int wind);
   double Mxl();
+  double Xpos(double ch, int ib);
   double AvgXofX();
   double AvgXofU();
   double AvgXofV();
@@ -223,6 +224,11 @@ double Road::Mxl(){
   return mxl;
 }
 
+double Road::Xpos(double ch, int ib){
+  double xpos = m_geometry->Get(ib).LocalXatYend(ch)+m_geometry->Get(ib).Origin().X();
+  return xpos;
+}
+
 double Road::AvgXofX(){
   // avg x over x boards
 
@@ -231,7 +237,7 @@ double Road::AvgXofX(){
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo < 2 || bo > 5){
-      double vmm_ch = m_hits[i].Channel()* 0.4;
+      double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
       zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
@@ -248,7 +254,7 @@ double Road::AvgXofU(){
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 2 || bo == 4){
-      double vmm_ch = m_hits[i].Channel()* 0.4;
+      double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
       zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
@@ -258,14 +264,14 @@ double Road::AvgXofU(){
 }
 
 double Road::AvgXofV(){
-  // avg x over u boards
+  // avg x over v boards
 
   std::vector<double> xs;
   std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 3 || bo == 5){
-      double vmm_ch = m_hits[i].Channel()* 0.4;
+      double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
       zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
@@ -324,6 +330,7 @@ double Road::AvgZofV(){
   double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
   return avg_z;
 }
+
 std::vector<Hit> Road::Hits(){
   return m_hits;
 }

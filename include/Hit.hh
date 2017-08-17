@@ -53,9 +53,9 @@ inline Hit::Hit(){
   m_Age = -1;
   m_x_pos = -1;
   m_y_pos = -1;
-  m_strip = -1;
   m_IsNoise = false;
   m_geometry = nullptr;
+  m_strip = -1;
 }
 
 inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const GeoOctuplet& geometry){
@@ -63,9 +63,10 @@ inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const 
   m_Age = age;
   m_x_pos = xpos;
   m_y_pos = ypos;
-  m_strip = m_geometry->Get(ib).channel_from_pos(m_x_pos,m_y_pos);
   m_IsNoise = is_noise;
   m_geometry = &geometry;
+  //  std::cout << "for board: " << ib << std::endl;
+  m_strip = m_geometry->Get(ib).channel_from_pos(xpos,ypos);
 }
 
 inline Hit::Hit(int ib, int age, double strip, bool is_noise, const GeoOctuplet& geometry){
@@ -73,9 +74,9 @@ inline Hit::Hit(int ib, int age, double strip, bool is_noise, const GeoOctuplet&
   m_Age = age;
   m_x_pos = -1.;
   m_y_pos = -1.;
-  m_strip = strip;
   m_IsNoise = is_noise;
   m_geometry = &geometry;
+  m_strip = strip;
 }
 
 inline Hit::~Hit(){
