@@ -18,6 +18,7 @@
 #include <TH1F.h>
 #include <TCanvas.h>
 #include <TRandom3.h>
+#include <TLatex.h>
 #include <TMath.h>
 #include <GeoOctuplet.hh>
 #include <Hit.hh>
@@ -31,12 +32,21 @@ TRandom3 *ran = new TRandom3;
 bool db = false;
 
 int NBOARDS = 8;
-int NSTRIPS = 512;
+int NSTRIPS = 4000;
   
 double xlow = 0.;
-double xhigh = 200.;
-double ylow = 17.9;
-double yhigh = 217.9;
+double xhigh = NSTRIPS*0.4-0.2;
+double ylow = 0.;
+double yhigh = 500.;
+
+// octuplet
+// int NBOARDS = 8;
+// int NSTRIPS = 512;
+  
+// double xlow = 0.;
+// double xhigh = NSTRIPS*0.4-0.2;
+// double ylow = 17.9;
+// double yhigh = 217.9;
 
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
 
@@ -48,14 +58,14 @@ double sig_art = 32.;
 
 // road size
 
-int XROAD = 64;
-int UVFACTOR = 1;
+int XROAD = 8;
+int UVFACTOR = 7; // 2~ small chamber
 int UVROAD = XROAD*UVFACTOR;
 
 // rates
 
 int muonrate = 1;
-int bkgrate = 11; // Hz per square mm = 10 kHz/cm^2
+int bkgrate = 100; // Hz per square mm = 10 kHz/cm^2
 
 
 
@@ -218,7 +228,7 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
         m_slope.count = roads[i]->Count();
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
-        m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + 217.9;
+        m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
         slopes.push_back(m_slope);
       }
     }
@@ -246,20 +256,23 @@ int main() {
   cout << "Using BCID window: " << bc_wind << endl;
   cout << endl;
 
-  int nevents = 1000;
+  int nevents = 10000;
   cout << "Generating " << nevents << " events" << endl;
 
-  GeoOctuplet* GEOMETRY = new GeoOctuplet();
+  GeoOctuplet* GEOMETRY = new GeoOctuplet(true);
 
   // counters
   int nmuon_trig = 0;
   int neventtrig = 0;
 
   // book histos
-  TH1F * h_mxres = new TH1F("h_mxres", "#DeltaX", 100, -100, 100);
-  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 100, -20, 20);
-  TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 100, -20, 20);
+  TH1F * h_mxres = new TH1F("h_mxres", "#DeltaX", 201, -100.5, 100.5);
+  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 82, -20.5, 20.5);
+  TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 82, -20.5, 20.5);
 
+  h_mxres->StatOverflows(kTRUE);
+  h_yres->StatOverflows(kTRUE);
+  h_xres->StatOverflows(kTRUE);
 
   for (int i = 0; i < nevents; i++){
 
@@ -375,27 +388,50 @@ int main() {
   cout << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger"<< endl;
 
   setstyle();
-  h_mxres->GetXaxis()->SetTitle("#Delta#theta (mrad)");
-  h_mxres->GetYaxis()->SetTitle("Events");
-  h_mxres->SetTitle("");
+
+
+  // plot dump!
   TCanvas * c = new TCanvas("c", "canvas", 800, 800);
   c->cd();
+
+  // theta res
+  h_mxres->GetXaxis()->SetTitle("#Delta#theta (mrad)");
+  h_mxres->GetYaxis()->SetTitle("Events");
+  h_mxres->GetYaxis()->SetTitleOffset(1.9);
+  h_mxres->SetTitle("");
+  h_mxres->SetLineColor(kTeal-5);
+  h_mxres->SetFillColorAlpha(kTeal-5,0.4);
   h_mxres->Draw();
+
+  TLatex* l1 = new TLatex();
+  l1->SetTextSize(0.03);
+  l1->SetTextColor(kRed);
+  l1->SetTextAlign(21);
+  l1->SetNDC();
+  l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mrad",h_mxres->GetRMS()));
   c->Print("mxres.pdf");
   c->Clear();
+
+
   h_yres->GetXaxis()->SetTitle("#Deltay (mm)");
   h_yres->GetYaxis()->SetTitle("Events");
+  h_yres->GetYaxis()->SetTitleOffset(1.9);
   h_yres->SetTitle("");
-  c->cd();
+  h_yres->SetLineColor(kGreen+3);
+  h_yres->SetFillColorAlpha(kGreen+3,0.4);
   h_yres->Draw();
+  l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mm",h_yres->GetRMS()));
   c->Print("yres.pdf");
   c->Clear();
 
   h_xres->GetXaxis()->SetTitle("#Deltax (mm)");
   h_xres->GetYaxis()->SetTitle("Events");
+  h_xres->GetYaxis()->SetTitleOffset(1.9);
+  h_xres->SetLineColor(kBlue-9);
+  h_xres->SetFillColorAlpha(kBlue-9,0.4);
   h_xres->SetTitle("");
-  c->cd();
   h_xres->Draw();
+  l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mm",h_xres->GetRMS()));
   c->Print("xres.pdf");
 
   return 0;

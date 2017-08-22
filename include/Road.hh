@@ -212,7 +212,7 @@ double Road::Mxl(){
     if (bo < 2 || bo > 5){
       double vmm_ch = m_hits[i].Channel()* 0.4;
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
+      zs.push_back(m_geometry->Get(bo).Origin().Z() + 2.7*pow(-1,bo));
     }
   }
   double mxl = 0.;

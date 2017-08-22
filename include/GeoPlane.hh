@@ -26,12 +26,16 @@ public:
   TVector3 const& nY() const;
   TVector3 const& nZ() const;
   double StripAlpha() const;
+  double xlen() const;
+  double ylen() const;
+
 
   double LocalXatYbegin(double channel) const;
   double LocalXatYend(double channel) const;
   
   void SetOrigin(const TVector3& p);
   void SetStripAlpha(double alpha);
+  void SetDim(double xlen, double ylen);
 
   double channel_from_pos(double xpos, double ypos) const;
 
@@ -44,6 +48,8 @@ private:
 
   double m_Alpha;
 
+  double m_xlen;
+  double m_ylen;
 
 };
 
@@ -53,6 +59,8 @@ inline GeoPlane::GeoPlane(){
   m_nY.SetXYZ(0.,1.,0.);
   m_nZ.SetXYZ(0.,0.,1.);
   m_Alpha = 0.;
+  m_xlen = 0.;
+  m_ylen = 0.;
 }
 
 inline GeoPlane::GeoPlane(const GeoPlane& plane){
@@ -61,6 +69,8 @@ inline GeoPlane::GeoPlane(const GeoPlane& plane){
   m_nY = plane.nY();
   m_nZ = plane.nZ();
   m_Alpha = plane.StripAlpha();
+  m_xlen = plane.xlen();
+  m_ylen = plane.ylen();
 }
 
 inline GeoPlane::~GeoPlane() {}
@@ -85,6 +95,14 @@ inline double GeoPlane::StripAlpha() const {
   return m_Alpha;
 }
 
+inline double GeoPlane::xlen() const {
+  return m_xlen;
+}
+
+inline double GeoPlane::ylen() const {
+  return m_ylen;
+}
+
 inline void GeoPlane::SetOrigin(const TVector3& p){
   m_Origin = p;
 }
@@ -93,18 +111,26 @@ inline void GeoPlane::SetStripAlpha(double alpha){
   m_Alpha = alpha;
 }
 
+inline void GeoPlane::SetDim(double xlen, double ylen){
+  m_xlen = xlen;
+  m_ylen = ylen;
+}
+
 inline double GeoPlane::channel_from_pos(double xpos, double ypos) const{
-  double channel = ((xpos - m_Origin.X()- TMath::Tan(m_Alpha) * (m_Origin.Y()+100.-ypos)) / (0.4)) + 256.5;
+  double ch_mid = (m_xlen+0.2)/0.4/2+0.5;
+  double channel = ((xpos - m_Origin.X()- TMath::Tan(m_Alpha) * (m_Origin.Y()+m_ylen/2.-ypos)) / (0.4)) + ch_mid;
   channel = round(channel);
   return channel;
 }
 
 inline double GeoPlane::LocalXatYbegin(double channel) const {
-  return (channel-256.5)*0.4 + TMath::Tan(m_Alpha)*200.;
+  double ch_mid = (m_xlen+0.2)/0.4/2+0.5;
+  return (channel-ch_mid)*0.4 + TMath::Tan(m_Alpha)*m_ylen;
 }
 
 inline double GeoPlane::LocalXatYend(double channel) const {
-  return (channel-256.5)*0.4;
+  double ch_mid = (m_xlen+0.2)/0.4/2+0.5;
+  return (channel-ch_mid)*0.4;
 }
 
 #endif
