@@ -9,6 +9,7 @@
 #include <bitset>
 #include <cmath>
 #include <chrono>
+#include <time.h>
 
 // ROOT includes
 #include <TROOT.h>
@@ -24,12 +25,18 @@
 #include <Hit.hh>
 #include <Road.hh>
 #include <TStyle.h>
+#include <sys/stat.h>
+#include <sys/param.h>
+#include <unistd.h>
 
 using namespace std;
 
 TRandom3 *ran = new TRandom3;
 
-bool db = false;
+
+bool db = false; // debug output flag
+
+// SOME CONSTANTS
 
 int NBOARDS = 8;
 int NSTRIPS = 4000;
@@ -50,7 +57,6 @@ double yhigh = 500.;
 
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
 
-
 int bc_wind = 8;
 double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
@@ -64,11 +70,14 @@ int UVROAD = XROAD*UVFACTOR;
 
 // rates
 
-int muonrate = 1;
-int bkgrate = 100; // Hz per square mm = 10 kHz/cm^2
+//int bkgrate = 10; // Hz per square mm = 10 kHz/cm^2
 
-
-
+// colors                                                                                                                                                                                   
+string pink = "\033[38;5;205m";
+string green = "\033[38;5;84m";
+string blue = "\033[38;5;27m";
+string ending = "\033[0m";
+string warning = "\033[38;5;227;48;5;232m";
 
 struct slope_t {
   int count;
@@ -116,7 +125,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   return make_tuple(x,y);
 }
 
-vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry){
+vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
 
   double plane_area = (xhigh-xlow) * (yhigh-ylow);
   vector<Hit*> bkghits;
@@ -236,6 +245,19 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
   return slopes;
 }
 
+void progress(double time_diff, int nprocessed, int ntotal){
+  // PROGRESS BAR (alex)
+  double rate = (double)(nprocessed+1)/time_diff;
+  std::cout.precision(1);
+  std::cout << "\r > " << nprocessed << " / " << ntotal 
+            << " | "   << std::fixed << 100*(double)(nprocessed)/(double)(ntotal) << "%"
+            << " | "   << std::fixed << rate << "Hz"
+            << " | "   << std::fixed << time_diff/60 << "m elapsed"
+            << " | "   << std::fixed << (double)(ntotal-nprocessed)/(rate*60) << "m remaining"
+            << std::flush;
+}
+
+
 void setstyle(){
   gROOT->SetBatch();
   gStyle->SetOptStat(0);
@@ -250,20 +272,59 @@ void setstyle(){
   //  gStyle->SetOptFit(kTRUE);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+
+  int nevents = -1;
+  int bkgrate = -1; // Hz per square mm = 10 kHz/cm^2
+
+  bool bkgflag = false;
+
+  if ( argc < 3 ){
+    cout << "Error at Input: please specify number of events to generate ";
+    cout << "Example:   ./sim -n 100" << endl;
+    cout << "Example:   ./sim -n 100 -b <bkg rate in Hz/mm^2>" << endl;
+    return 0;
+  }
+
+  for (int i=1;i<argc-1;i++){
+    if (strncmp(argv[i],"-n",2)==0){
+      nevents = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-b",2)==0){
+      bkgrate = atoi(argv[i+1]);
+      bkgflag = true;
+    }
+  }
 
   cout << endl;
-  cout << "Using BCID window: " << bc_wind << endl;
+  cout << blue << "--------------" << ending << endl;
+  cout << blue << "OCT SIM ✪ ‿ ✪ " << ending << endl;
+  cout << blue << "--------------" << ending << endl;
+  cout << endl;
+  cout << endl;
+  printf("\r >> x-road size, uv-road size (in strips): (%d, %d)", XROAD, UVROAD);
+  cout << endl;
+  cout << "\r >> Using BCID window: " << bc_wind << endl;
+  printf("\r >> Background rate of %d Hz per square mm",bkgrate);
+  cout << endl;
+  printf("\r >> Assuming chamber size: (%4.1f,%4.1f) in mm",xhigh-xlow, yhigh-ylow);
+  cout << endl;
   cout << endl;
 
-  int nevents = 10000;
-  cout << "Generating " << nevents << " events" << endl;
+  if (nevents == -1){
+    cout << "Didn't set the number of generated events! Exiting." << endl;
+    return 0;
+  }
+  
+  cout << pink << "Generating " << nevents << " events" << ending << endl;
 
   GeoOctuplet* GEOMETRY = new GeoOctuplet(true);
 
   // counters
   int nmuon_trig = 0;
   int neventtrig = 0;
+  int extratrig = 0;
+  bool muon_trig_ok = false;
 
   // book histos
   TH1F * h_mxres = new TH1F("h_mxres", "#DeltaX", 201, -100.5, 100.5);
@@ -274,7 +335,16 @@ int main() {
   h_yres->StatOverflows(kTRUE);
   h_xres->StatOverflows(kTRUE);
 
+  time_t timer = time(NULL);
+  time_t curr_time;
   for (int i = 0; i < nevents; i++){
+
+    if (i % ((int)nevents/100) == 0){
+      curr_time = time(NULL);
+      progress(curr_time-timer, i, nevents);
+    }
+
+    muon_trig_ok = false;
 
     // generate muon
     double co = 2.7;
@@ -285,9 +355,11 @@ int main() {
     
     double xmuon,ymuon;
     std::tie(xmuon,ymuon) = generate_muon(xpos,ypos,zpos);
+
     if (db){
       printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
     }
+
     vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
   
     vector<int> art_bc(NBOARDS, -1.);
@@ -323,8 +395,10 @@ int main() {
     if (db)
       cout << "N muonhits: " << hits.size() << endl;
     
-    if (n_x1 > 0 && n_x2 > 0 && n_u > 0 && n_v > 0)
+    if (n_x1 > 0 && n_x2 > 0 && n_u > 0 && n_v > 0){
       nmuon_trig++;
+      muon_trig_ok= true; 
+    }
 
     for (int j = 0; j < art_bc.size(); j++){
       if (art_bc[j] == -1)
@@ -335,15 +409,18 @@ int main() {
 
     // assume bkg rate has oct_response factored in!
     
-    vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY);
-    if (db)
-      cout << "Nbkg hits: " << bkghits.size() << endl;
+    vector<Hit*> all_hits = hits;    
+    if (bkgflag){
+      vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate);
+      if (db)
+        cout << "Nbkg hits: " << bkghits.size() << endl;
+      all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
+    }
+
     vector<Road*> m_roads = create_roads(*GEOMETRY);
     if (db)
       cout << "Number of roads: " << m_roads.size() << endl;
 
-    vector<Hit*> all_hits = hits;
-    all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
 
     if (db)
       cout << "Total number of hits: " << all_hits.size() << endl;
@@ -381,14 +458,31 @@ int main() {
     h_yres->Fill(myslope.yavg-ymuon);
     h_xres->Fill(myslope.xavg-xmuon);
 
-
-    neventtrig++;
+    if (muon_trig_ok)
+      neventtrig++;
+    else
+      extratrig++;
 
   }
+  cout << endl;
+  cout << endl;
+  cout << blue << "SIMULATION SUMMARY:" << ending << endl;
   cout << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger"<< endl;
-
+  cout << extratrig << " extra trigger events " << endl;
+  cout << endl;
   setstyle();
 
+
+  // make directory                                                                                                                                                                           
+  
+  string dirname = "octsimplots_";
+  if (!bkgflag)
+    dirname = "octsimplots";
+  else
+    dirname += to_string(bkgrate);
+
+  mkdir(dirname.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  chdir(dirname.c_str());  
 
   // plot dump!
   TCanvas * c = new TCanvas("c", "canvas", 800, 800);
@@ -410,6 +504,9 @@ int main() {
   l1->SetNDC();
   l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mrad",h_mxres->GetRMS()));
   c->Print("mxres.pdf");
+  c->SetLogy(1);
+  c->Print("mxres_log.pdf");
+  c->SetLogy(0);
   c->Clear();
 
 
@@ -422,6 +519,9 @@ int main() {
   h_yres->Draw();
   l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mm",h_yres->GetRMS()));
   c->Print("yres.pdf");
+  c->SetLogy(1);
+  c->Print("yres_log.pdf");
+  c->SetLogy(0);
   c->Clear();
 
   h_xres->GetXaxis()->SetTitle("#Deltax (mm)");
@@ -433,6 +533,9 @@ int main() {
   h_xres->Draw();
   l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mm",h_xres->GetRMS()));
   c->Print("xres.pdf");
+  c->SetLogy(1);
+  c->Print("xres_log.pdf");
+  c->SetLogy(0);
 
   return 0;
 }
