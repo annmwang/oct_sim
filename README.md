@@ -1,8 +1,9 @@
 # oct_sim
 Quick simulation for the MMTP trigger
+C++ version working, python version out-of-date
 
 ## PYTHON VERSION
-If on herophysics, just to have numpy and pyroot together:
+WARNING: not up to date! If on herophysics, just to have numpy and pyroot together:
 ```{r, engine='bash', count_lines}
 source hero_setup.sh
 ```
