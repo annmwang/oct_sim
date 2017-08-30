@@ -28,7 +28,6 @@ public:
   int isV() const;
   double x_pos() const;
   double y_pos() const;
-  double z_pos() const;
   bool IsNoise() const;
 
   void SetMMFE8Index(int ib);
@@ -110,6 +109,18 @@ inline int Hit::isU() const {
 inline int Hit::isV() const {
   return (MMFE8Index() == 3 ||
           MMFE8Index() == 5);
+}
+
+inline double Hit::x_pos() const{
+  return m_x_pos;
+}
+
+inline double Hit::y_pos() const{
+  return m_y_pos;
+}
+
+inline bool Hit::IsNoise() const{
+  return m_IsNoise;
 }
 
 inline void Hit::SetPos(double xpos, double ypos, int ib){

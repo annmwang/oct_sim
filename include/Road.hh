@@ -30,6 +30,7 @@ public:
   void Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor);
   void Increment_Age(int wind);
   bool Coincidence(int wind);
+  int NMuon();
   bool Horiz_ok();
   bool Stereo_ok();
   bool Mature(int wind);
@@ -166,6 +167,15 @@ void Road::Increment_Age(int wind){
 
 bool Road::Coincidence(int wind){
   return Horiz_ok() && Stereo_ok() && Mature(wind);
+}
+
+int Road::NMuon(){
+  int nreal = 0;
+  for (int i = 0; i < m_hits.size(); i++){
+    if (m_hits[i].IsNoise() == false)
+      nreal++;
+  }
+  return nreal;
 }
 
 bool Road::Horiz_ok(){
