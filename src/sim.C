@@ -43,7 +43,8 @@ bool db = false; // debug output flag
 // SOME CONSTANTS
 
 int NBOARDS = 8;
-int NSTRIPS = 8800; // has to be multiple of x road
+int NSTRIPS = 512; // has to be multiple of x road
+//int NSTRIPS = 8800; // has to be multiple of x road
   
 double xlow = 0.;
 double xhigh = NSTRIPS*0.4-0.2;
@@ -69,7 +70,7 @@ double sig_art = 32.;
 // road size
 
 int XROAD = 8;
-int UVFACTOR = 5;
+int UVFACTOR = 3;
 int UVROAD = XROAD*UVFACTOR;
 
 // rates
@@ -129,7 +130,8 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
     xpos[j] = x_b;
     ypos[j] = y_b;
   }    
-  return make_tuple(x,y);
+  return make_tuple(0.,0.);
+//   return make_tuple(x,y);
 }
 
 vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
@@ -497,7 +499,7 @@ int main(int argc, char* argv[]) {
   TFile* fout = new TFile(outputFileName, "RECREATE");
   fout->mkdir("event_displays");
 
-  GeoOctuplet* GEOMETRY = new GeoOctuplet(true);
+  GeoOctuplet* GEOMETRY = new GeoOctuplet(true,xhigh-xlow,yhigh-ylow);
 
   // counters
   int nmuon_trig = 0;

@@ -53,7 +53,7 @@ inline GeoOctuplet::~GeoOctuplet(){
     delete m_planes[i];
 }
 
-inline void GeoOctuplet::Init(bool NSW){
+inline void GeoOctuplet::Init(bool NSW, double xlen, double ylen){
   int i = 0;
   TVector3 origin;
 
@@ -134,73 +134,73 @@ inline void GeoOctuplet::Init(bool NSW){
     // plane 0
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 0.);
-    origin.SetXYZ(102.3, 250., -2.7);
+    origin.SetXYZ(xlen/2., ylen/2., -2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(0.);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 1
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 11.2);
-    origin.SetXYZ(102.3, 250., 11.2+2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 11.2+2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(0.);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 2
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 32.4);
-    origin.SetXYZ(102.3, 250., 32.4-2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 32.4-2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(-0.0261799);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 3
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 43.6);
-    origin.SetXYZ(102.3, 250., 43.6+2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 43.6+2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(0.0261799);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 4
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 113.6);
-    origin.SetXYZ(102.3, 250., 113.6-2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 113.6-2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(-0.0261799);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 5
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 124.8);
-    origin.SetXYZ(102.3, 250., 124.8+2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 124.8+2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(0.0261799);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 6
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 146.0);
-    origin.SetXYZ(102.3, 250., 146.0-2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 146.0-2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(0.);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
 
     i++;
     // plane 7
     m_planes.push_back(new GeoPlane());
     //origin.SetXYZ(102.3, 250., 157.2);
-    origin.SetXYZ(102.3, 250., 157.2+2.7);
+    origin.SetXYZ(xlen/2.,ylen/2., 157.2+2.7);
     m_planes[i]->SetOrigin(origin);
     m_planes[i]->SetStripAlpha(0.);
-    m_planes[i]->SetDim(204.6,500.);
+    m_planes[i]->SetDim(xlen,ylen);
   }
 }
 
