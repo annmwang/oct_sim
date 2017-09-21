@@ -19,7 +19,7 @@
 class GeoOctuplet {
 
 public:
-  GeoOctuplet(bool NSW);
+  GeoOctuplet(bool NSW, double xlen, double ylen);
   GeoOctuplet(const GeoOctuplet& oct);
   ~GeoOctuplet();
 
@@ -28,7 +28,7 @@ public:
   GeoPlane const& operator [] (int index) const;
 
 private:
-  void Init(bool NSW);
+  void Init(bool NSW, double xlen, double ylen);
   
   std::vector<GeoPlane*> m_planes;
 
@@ -37,8 +37,8 @@ private:
 
 };
 
-inline GeoOctuplet::GeoOctuplet(bool NSW){
-  Init(NSW);
+inline GeoOctuplet::GeoOctuplet(bool NSW, double xlen, double ylen){
+  Init(NSW, xlen, ylen);
 }
 
 inline GeoOctuplet::GeoOctuplet(const GeoOctuplet& oct){

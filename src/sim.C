@@ -43,15 +43,21 @@ bool db = false; // debug output flag
 // SOME CONSTANTS
 
 int NBOARDS = 8;
-int NSTRIPS = 512; // has to be multiple of x road
-//int NSTRIPS = 8800; // has to be multiple of x road
+//int NSTRIPS = 512; // has to be multiple of x road
+int NSTRIPS = 8800; // has to be multiple of x road
   
 double xlow = 0.;
 double xhigh = NSTRIPS*0.4-0.2;
 double ylow = 0.;
 double yhigh = 500.;
 
-// octuplet
+// active area
+double mu_xlow = 100*0.4+0.2;
+double mu_xhigh = NSTRIPS*0.4-0.2-100*0.4;
+double mu_ylow = 0.;
+double mu_yhigh = 500.;
+
+// // octuplet
 // int NBOARDS = 8;
 // int NSTRIPS = 512;
   
@@ -70,8 +76,7 @@ double sig_art = 32.;
 // road size
 
 int XROAD = 8;
-int UVFACTOR = 3;
-int UVROAD = XROAD*UVFACTOR;
+int UVFACTOR = 4;
 
 // rates
 
@@ -114,8 +119,11 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
 
 tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
 
-  double x = ran->Uniform(xlow,xhigh);
-  double y = ran->Uniform(ylow,yhigh);
+//   double x = ran->Uniform(xlow,xhigh);
+//   double y = ran->Uniform(ylow,yhigh);
+
+  double x = ran->Uniform(mu_xlow,mu_xhigh);
+  double y = ran->Uniform(mu_ylow,mu_yhigh);
 
   double thx, thy;
 
@@ -130,8 +138,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
     xpos[j] = x_b;
     ypos[j] = y_b;
   }    
-  return make_tuple(0.,0.);
-//   return make_tuple(x,y);
+  return make_tuple(x,y);
 }
 
 vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
@@ -399,7 +406,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     l1->SetTextAlign(21);
     l1->SetNDC();
     l1->DrawLatex(0.4,0.5,Form("ntrig: %d for %d (x), ",ntrig, XROAD));
-    l1->DrawLatex(0.4,0.45,Form("%d (uv) strip roads",UVROAD));
+    l1->DrawLatex(0.4,0.45,Form("+/- %d neighbors (uv)",UVFACTOR));
   
   
   if (xflag){
@@ -469,7 +476,7 @@ int main(int argc, char* argv[]) {
   cout << blue << "--------------" << ending << endl;
   cout << endl;
   cout << endl;
-  printf("\r >> x-road size, uv-road size (in strips): (%d, %d)", XROAD, UVROAD);
+  printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
   cout << "\r >> Using BCID window: " << bc_wind << endl;
   printf("\r >> Background rate of %d Hz per square mm",bkgrate);
@@ -490,8 +497,8 @@ int main(int argc, char* argv[]) {
     dirname += to_string(bkgrate);
   dirname += "_x";
   dirname += to_string(XROAD);
-  dirname += "_uv";
-  dirname += to_string(UVROAD);
+  dirname += "_uv_n";
+  dirname += to_string(UVFACTOR);
 
   mkdir(dirname.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
   chdir(dirname.c_str());  
@@ -499,7 +506,9 @@ int main(int argc, char* argv[]) {
   TFile* fout = new TFile(outputFileName, "RECREATE");
   fout->mkdir("event_displays");
 
-  GeoOctuplet* GEOMETRY = new GeoOctuplet(true,xhigh-xlow,yhigh-ylow);
+  double xlen = xhigh-xlow;
+  double ylen = yhigh-ylow; 
+  GeoOctuplet* GEOMETRY = new GeoOctuplet(true,xlen,ylen);
 
   // counters
   int nmuon_trig = 0;
@@ -512,9 +521,12 @@ int main(int argc, char* argv[]) {
   bool muon_trig_ok = false;
 
   // book histos
+  //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
   TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
-  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 82, -20.5, 20.5);
-  TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 82, -20.5, 20.5);
+  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 123, -20.5, 20.5);
+  //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
+  TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
+  h_xres->Sumw2();
   TH1F * h_nmu = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
   TH2D * h_nmuvsdx = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
 
@@ -535,7 +547,8 @@ int main(int argc, char* argv[]) {
     muon_trig_ok = false;
 
     // generate muon
-    double co = 2.7;
+     double co = 2.7;
+    co = 0;
     vector<double> zpos = {-co, 11.2+co, 32.4-co, 43.6+co, 
                            113.6-co, 124.8+co, 146.0-co, 157.2+co};
     vector<double> xpos(NBOARDS,-1.);
@@ -681,7 +694,7 @@ int main(int argc, char* argv[]) {
 
   ofstream mylog;
   mylog.open("log.txt");
-  mylog << "x-road size, uv-road size (in strips): ("<< XROAD << ", "<< UVROAD<<")\n";
+  mylog << "x-road size(in strips): "<< XROAD <<", +/- neighbor roads (uv): "<< UVFACTOR <<"\n";
   mylog << "Using BCID window: " << bc_wind << "\n";
   mylog << "Background rate of " << bkgrate << " Hz per square mm\n";
   mylog << "Assuming chamber size: ("<<xhigh-xlow <<", "<< yhigh-ylow << ") in mm\n";
@@ -758,7 +771,8 @@ int main(int argc, char* argv[]) {
   h_xres->SetLineColor(kBlue-9);
   h_xres->SetFillColorAlpha(kBlue-9,0.4);
   h_xres->SetTitle("");
-  h_xres->Draw("hist");
+  h_xres->Draw("PE");
+  //  h_xres->Draw("hist");
   h_xres->SetMarkerStyle(8);
   h_xres->SetMarkerSize(1);
   h_xres->SetLineWidth(3);

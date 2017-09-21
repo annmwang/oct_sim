@@ -89,17 +89,9 @@ inline int Road::Offset(int ib){
 }
 
 inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
-  int addstrip; 
   double slow, shigh;
-  if (hit.MMFE8Index() > 1 && hit.MMFE8Index() < 6){
-    addstrip = uvfactor*roadsize-roadsize;
-    slow = roadsize*m_iroad-addstrip/2.;
-    shigh = roadsize*(m_iroad+1)+addstrip/2.;
-  }
-  else{
-    slow = roadsize*m_iroad;
-    shigh = roadsize*(m_iroad+1);
-  }
+  slow = roadsize*m_iroad;
+  shigh = roadsize*(m_iroad+1);
   int strip = hit.Channel();
   strip += Offset(hit.MMFE8Index());
   if (strip >= slow && strip <= shigh)
@@ -109,12 +101,10 @@ inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
 }
 
 inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor) {
-  int addstrip; 
   double slow, shigh;
   if (hit.MMFE8Index() > 1 && hit.MMFE8Index() < 6){
-    addstrip = uvfactor*roadsize-roadsize;
-    slow = roadsize*(m_iroad-1)-addstrip/2.;
-    shigh = roadsize*(m_iroad+2)+addstrip/2.;
+    slow = roadsize*(m_iroad-uvfactor);
+    shigh = roadsize*(m_iroad+uvfactor+1);
   }
   else{
     slow = roadsize*(m_iroad-1);
@@ -243,13 +233,11 @@ double Road::AvgXofX(){
   // avg x over x boards
 
   std::vector<double> xs;
-  std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo < 2 || bo > 5){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
   }
   double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
@@ -260,13 +248,11 @@ double Road::AvgXofU(){
   // avg x over u boards
 
   std::vector<double> xs;
-  std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 2 || bo == 4){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
   }
   double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
@@ -277,13 +263,11 @@ double Road::AvgXofV(){
   // avg x over v boards
 
   std::vector<double> xs;
-  std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 3 || bo == 5){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
   }
   double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();

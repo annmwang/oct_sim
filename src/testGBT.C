@@ -161,7 +161,7 @@ void setstyle(){
 int main() {
 
 
-  GeoOctuplet* GEOMETRY = new GeoOctuplet(false);
+  GeoOctuplet* GEOMETRY = new GeoOctuplet(false,0.,0.);
 
 
   // RUN 3522 check
