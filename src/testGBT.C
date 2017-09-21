@@ -55,6 +55,13 @@ struct slope_t {
 };
 
 
+int strip(int bo, int vmm, int ch){
+  if (bo == 0 || bo == 3 || bo ==  5 || bo == 6)
+    return 513-(vmm*64+ch);
+  else
+    return vmm*64+ch;
+}
+
 vector<Road*> create_roads(const GeoOctuplet& geometry){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
@@ -124,7 +131,7 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
         cout << "Road (i,count): ("<< roads[i]->iRoad() <<", " << roads[i]->Count()<<")" << endl;
         cout << "---------------------------" << endl;
         for (int k = 0; k < roads[i]->Hits().size(); k++){
-          cout << "Hit (board, BC): (" << roads[i]->Hits()[k].MMFE8Index() <<", "<< roads[i]->Hits()[k].Age() <<")"<< endl;
+          printf("Hit (board, BC, channel*pitch): (%d,%d,%4.4f)\n",roads[i]->Hits()[k].MMFE8Index(),roads[i]->Hits()[k].Age(),roads[i]->Hits()[k].Channel()*0.4);
         }
         ntrigs++;
         slope_t m_slope;
@@ -154,7 +161,7 @@ void setstyle(){
 int main() {
 
 
-  GeoOctuplet* GEOMETRY = new GeoOctuplet();
+  GeoOctuplet* GEOMETRY = new GeoOctuplet(false,0.,0.);
 
 
   // RUN 3522 check
@@ -163,34 +170,34 @@ int main() {
   vector<Hit*> hits;
   
   Hit* newhit1 = nullptr;
-  newhit1 = new Hit(4, 201, 5*64+58, false, *GEOMETRY);
+  newhit1 = new Hit(4, 201, strip(4,5,58), false, *GEOMETRY);
   hits.push_back(newhit1);
   Hit* newhit2 = nullptr;
-  newhit2 = new Hit(4, 209, 5*64+64, false, *GEOMETRY);
+  newhit2 = new Hit(4, 209, strip(4,5,64), false, *GEOMETRY);
   hits.push_back(newhit2);
   Hit* newhit3 = nullptr;
-  newhit3 = new Hit(5, 203, 511-(2*64+30), false, *GEOMETRY);
+  newhit3 = new Hit(5, 203, strip(5,2,30), false, *GEOMETRY);
   hits.push_back(newhit3);
   Hit* newhit4 = nullptr;
-  newhit4 = new Hit(0, 203, 511-(0*64+22), false, *GEOMETRY);
+  newhit4 = new Hit(0, 203, strip(0,0,22), false, *GEOMETRY);
   hits.push_back(newhit4);
   Hit* newhit5 = nullptr;
-  newhit5 = new Hit(2, 203, (7*64+14), false, *GEOMETRY);
+  newhit5 = new Hit(2, 203, strip(2,7,14), false, *GEOMETRY);
   hits.push_back(newhit5);
   Hit* newhit6 = nullptr;
-  newhit6 = new Hit(2, 210, (7*64+17), false, *GEOMETRY);
+  newhit6 = new Hit(2, 210, strip(2,7,17), false, *GEOMETRY);
   hits.push_back(newhit6);
   Hit* newhit7 = nullptr;
-  newhit7 = new Hit(7, 204, (5*64+5), false, *GEOMETRY);
+  newhit7 = new Hit(7, 204, strip(7,5,5), false, *GEOMETRY);
   hits.push_back(newhit7);
   Hit* newhit8 = nullptr;
-  newhit8 = new Hit(1, 204, (7*64+26), false, *GEOMETRY);
+  newhit8 = new Hit(1, 204, strip(1,7,26), false, *GEOMETRY);
   hits.push_back(newhit8);
   Hit* newhit9 = nullptr;
-  newhit9 = new Hit(6, 206, 511-(2*64+42), false, *GEOMETRY);
+  newhit9 = new Hit(6, 206, strip(6,2,42), false, *GEOMETRY);
   hits.push_back(newhit9);
   Hit* newhit10 = nullptr;
-  newhit10 = new Hit(0, 206, 511-(0*64+24), false, *GEOMETRY);
+  newhit10 = new Hit(0, 206, strip(0,0,24), false, *GEOMETRY);
   hits.push_back(newhit10);
   
   vector<Road*> m_roads = create_roads(*GEOMETRY);
@@ -210,6 +217,7 @@ int main() {
     }
   }
 
+  cout << "my slope: " << myslope.mxl << endl;
 
   // GBT event 365                                                                                                                                                                          
 
@@ -219,15 +227,15 @@ int main() {
   hits.push_back(newhit1);
   newhit2 = new Hit(7, 2242, 2*64+4, false, *GEOMETRY);
   hits.push_back(newhit2);
-  newhit3 = new Hit(6, 2239, 511-(5*64+52), false, *GEOMETRY);
+  newhit3 = new Hit(6, 2239, 513-(5*64+52), false, *GEOMETRY);
   hits.push_back(newhit3);
-  newhit4 = new Hit(6, 2243, 511-(5*64+53), false, *GEOMETRY);
+  newhit4 = new Hit(6, 2243, 513-(5*64+53), false, *GEOMETRY);
   hits.push_back(newhit4);
-  newhit5 = new Hit(5, 2240, 511-(5*64+50), false, *GEOMETRY);
+  newhit5 = new Hit(5, 2240, 513-(5*64+50), false, *GEOMETRY);
   hits.push_back(newhit5);
   newhit6 = new Hit(4, 2244, (2*64+36), false, *GEOMETRY);
   hits.push_back(newhit6);
-  newhit7 = new Hit(3, 2242, 511-(5*64+11), false, *GEOMETRY);
+  newhit7 = new Hit(3, 2242, 513-(5*64+11), false, *GEOMETRY);
   hits.push_back(newhit7);
   newhit8 = new Hit(2, 2240, (3*64+9), false, *GEOMETRY);
   hits.push_back(newhit8);
@@ -236,13 +244,13 @@ int main() {
   newhit10 = new Hit(1, 2241, (3*64+11), false, *GEOMETRY);
   hits.push_back(newhit10);
   Hit* newhit11 = nullptr;
-  newhit11 = new Hit(0, 2240, 511-(4*64+46), false, *GEOMETRY);
+  newhit11 = new Hit(0, 2240, 513-(4*64+46), false, *GEOMETRY);
   hits.push_back(newhit11);
   Hit* newhit12 = nullptr;
-  newhit12 = new Hit(0, 2244, 511-(4*64+47), false, *GEOMETRY);
+  newhit12 = new Hit(0, 2244, 513-(4*64+47), false, *GEOMETRY);
   hits.push_back(newhit12);
   Hit* newhit13 = nullptr;
-  newhit13 = new Hit(0, 2246, 511-(4*64+44), false, *GEOMETRY);
+  newhit13 = new Hit(0, 2246, 513-(4*64+44), false, *GEOMETRY);
   hits.push_back(newhit13);
   
 
@@ -261,6 +269,51 @@ int main() {
       myslope.mxl = m_slopes[j].mxl;
     }
   }
+  cout << "my slope: " << myslope.mxl << endl;
+
+  hits.clear();
+
+  // GBT event 368
+  newhit1 = new Hit(7, 1368, strip(7,5,36), false, *GEOMETRY);
+  hits.push_back(newhit1);
+  newhit2 = new Hit(6, 1368, strip(6,2,20), false, *GEOMETRY);
+  hits.push_back(newhit2);
+  newhit3 = new Hit(6, 1375, strip(6,2,17), false, *GEOMETRY);
+  hits.push_back(newhit3);
+  newhit4 = new Hit(5, 1366, strip(5,2,23), false, *GEOMETRY);
+  hits.push_back(newhit4);
+  newhit5 = new Hit(5, 1373, strip(5,2,26), false, *GEOMETRY);
+  hits.push_back(newhit5);
+  newhit6 = new Hit(4, 1367, strip(4,6,11), false, *GEOMETRY);
+  hits.push_back(newhit6);
+  newhit7 = new Hit(4, 1371, strip(4,6,12), false, *GEOMETRY);
+  hits.push_back(newhit7);
+  newhit8 = new Hit(2, 1368, strip(2,6,56), false, *GEOMETRY);
+  hits.push_back(newhit8);
+  newhit9 = new Hit(1, 1370, strip(1,6,51), false, *GEOMETRY);
+  hits.push_back(newhit9);
+  newhit10 = new Hit(1, 1373, strip(1,6,52), false, *GEOMETRY);
+  hits.push_back(newhit10);
+  newhit11 = new Hit(0, 1374, strip(0,1,3), false, *GEOMETRY);
+  hits.push_back(newhit11);
+  newhit12 = new Hit(0, 1369, strip(0,1,5), false, *GEOMETRY);
+  hits.push_back(newhit12);
+
+  m_roads = create_roads(*GEOMETRY);
+  
+  m_slopes = finder(hits, m_roads);
+  ntrigroads = m_slopes.size();
+  if (db)
+    cout << "Ntriggered roads: " << ntrigroads << endl;
+  myslope.mxl = 0.;
+  myslope.count = 0;
+  for (int j = 0; j < m_slopes.size(); j++){
+    if (m_slopes[j].count > myslope.count){
+      myslope.count = m_slopes[j].count;
+      myslope.mxl = m_slopes[j].mxl;
+    }
+  }
+  cout << "my slope: " << myslope.mxl << endl;
 
   return 0;
 }

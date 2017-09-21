@@ -30,6 +30,7 @@ public:
   void Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor);
   void Increment_Age(int wind);
   bool Coincidence(int wind);
+  int NMuon();
   bool Horiz_ok();
   bool Stereo_ok();
   bool Mature(int wind);
@@ -88,17 +89,9 @@ inline int Road::Offset(int ib){
 }
 
 inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
-  int addstrip; 
   double slow, shigh;
-  if (hit.MMFE8Index() > 1 && hit.MMFE8Index() < 6){
-    addstrip = uvfactor*roadsize-roadsize;
-    slow = roadsize*m_iroad-addstrip/2.;
-    shigh = roadsize*(m_iroad+1)+addstrip/2.;
-  }
-  else{
-    slow = roadsize*m_iroad;
-    shigh = roadsize*(m_iroad+1);
-  }
+  slow = roadsize*m_iroad;
+  shigh = roadsize*(m_iroad+1);
   int strip = hit.Channel();
   strip += Offset(hit.MMFE8Index());
   if (strip >= slow && strip <= shigh)
@@ -108,12 +101,10 @@ inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
 }
 
 inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor) {
-  int addstrip; 
   double slow, shigh;
   if (hit.MMFE8Index() > 1 && hit.MMFE8Index() < 6){
-    addstrip = uvfactor*roadsize-roadsize;
-    slow = roadsize*(m_iroad-1)-addstrip/2.;
-    shigh = roadsize*(m_iroad+2)+addstrip/2.;
+    slow = roadsize*(m_iroad-uvfactor);
+    shigh = roadsize*(m_iroad+uvfactor+1);
   }
   else{
     slow = roadsize*(m_iroad-1);
@@ -168,6 +159,15 @@ bool Road::Coincidence(int wind){
   return Horiz_ok() && Stereo_ok() && Mature(wind);
 }
 
+int Road::NMuon(){
+  int nreal = 0;
+  for (int i = 0; i < m_hits.size(); i++){
+    if (m_hits[i].IsNoise() == false)
+      nreal++;
+  }
+  return nreal;
+}
+
 bool Road::Horiz_ok(){
   int nx1 = 0;
   int nx2 = 0;
@@ -212,7 +212,7 @@ double Road::Mxl(){
     if (bo < 2 || bo > 5){
       double vmm_ch = m_hits[i].Channel()* 0.4;
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
+      zs.push_back(m_geometry->Get(bo).Origin().Z() + 2.7*pow(-1,bo));
     }
   }
   double mxl = 0.;
@@ -233,13 +233,11 @@ double Road::AvgXofX(){
   // avg x over x boards
 
   std::vector<double> xs;
-  std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo < 2 || bo > 5){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
   }
   double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
@@ -250,13 +248,11 @@ double Road::AvgXofU(){
   // avg x over u boards
 
   std::vector<double> xs;
-  std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 2 || bo == 4){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
   }
   double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
@@ -267,13 +263,11 @@ double Road::AvgXofV(){
   // avg x over v boards
 
   std::vector<double> xs;
-  std::vector<double> zs;
   for (int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 3 || bo == 5){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
       xs.push_back(vmm_ch);
-      zs.push_back(m_geometry->Get(bo).Origin().Z());
     }
   }
   double avg_x = std::accumulate(xs.begin(), xs.end(), 0.0)/(double)xs.size();
