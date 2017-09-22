@@ -152,11 +152,12 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   int end_noise = start_bc + bc_wind * 2 -1;
 
   //assume uniform distribution of background - correct for noise
-  double bkgrate_bc = bkgrate / (4.*pow(10,7));
+  double bkgrate_bc = bkgrate * (25*pow(10,-9));
   double expbkg = bkgrate_bc * noise_window  * plane_area;
 
 
   for (int j = 0; j < NBOARDS; j++){
+    //int nbkg = expbkg;
     int nbkg = ran->Poisson(expbkg);
     double x, y;
     for (int k = 0; k < nbkg; k++){
