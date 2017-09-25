@@ -32,10 +32,11 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <unistd.h>
+#include <time.h>
 
 using namespace std;
 
-TRandom3 *ran = new TRandom3;
+TRandom3 *ran = new TRandom3(time(NULL));
 
 
 bool db = false; // debug output flag
@@ -80,7 +81,7 @@ int UVFACTOR = 4;
 
 // rates
 
-//int bkgrate = 10; // Hz per square mm = 10 kHz/cm^2
+//int bkgrate = 10; // Hz per strip
 
 // colors                                                                                                                                                                                   
 string pink = "\033[38;5;205m";
@@ -141,31 +142,56 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   return make_tuple(x,y);
 }
 
-vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
+// vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
 
-  double plane_area = (xhigh-xlow) * (yhigh-ylow);
-  vector<Hit*> bkghits;
+//   double plane_area = (xhigh-xlow) * (yhigh-ylow);
+//   vector<Hit*> bkghits;
 
   
+//   int noise_window = bc_wind * 3;
+//   int start_noise = start_bc - bc_wind;
+//   int end_noise = start_bc + bc_wind * 2 -1;
+
+//   //assume uniform distribution of background - correct for noise
+//   double bkgrate_bc = bkgrate * (25*pow(10,-9));
+//   double expbkg = bkgrate_bc * noise_window  * plane_area;
+
+
+//   for (int j = 0; j < NBOARDS; j++){
+//     //int nbkg = expbkg;
+//     int nbkg = ran->Poisson(expbkg);
+//     double x, y;
+//     for (int k = 0; k < nbkg; k++){
+//       x = ran->Uniform(xlow, xhigh);
+//       y = ran->Uniform(ylow, yhigh);
+//       Hit* newhit = nullptr;
+//       newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), x,y,true, geometry);
+//       bkghits.push_back(newhit);
+//     }
+//   }
+//   return bkghits;
+// }
+
+vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
+
+  vector<Hit*> bkghits;
+
   int noise_window = bc_wind * 3;
   int start_noise = start_bc - bc_wind;
   int end_noise = start_bc + bc_wind * 2 -1;
 
   //assume uniform distribution of background - correct for noise
   double bkgrate_bc = bkgrate * (25*pow(10,-9));
-  double expbkg = bkgrate_bc * noise_window  * plane_area;
-
-
+  double bkg_prob = bkgrate_bc*noise_window;
   for (int j = 0; j < NBOARDS; j++){
     //int nbkg = expbkg;
-    int nbkg = ran->Poisson(expbkg);
-    double x, y;
-    for (int k = 0; k < nbkg; k++){
-      x = ran->Uniform(xlow, xhigh);
-      y = ran->Uniform(ylow, yhigh);
-      Hit* newhit = nullptr;
-      newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), x,y,true, geometry);
-      bkghits.push_back(newhit);
+    for (int k = 0; k < NSTRIPS; k++){
+      double prob = ran->Uniform(0,1.);
+      if (prob < bkg_prob){
+        Hit* newhit = nullptr;
+        newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), k,true, geometry);
+        bkghits.push_back(newhit);
+      }
     }
   }
   return bkghits;
@@ -428,7 +454,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
 int main(int argc, char* argv[]) {
 
   int nevents = -1;
-  int bkgrate = -1; // Hz per square mm = 10 kHz/cm^2
+  int bkgrate = -1; // Hz per strip
 
   bool bkgflag = false;
   bool pltflag = false;
@@ -438,8 +464,8 @@ int main(int argc, char* argv[]) {
   if ( argc < 3 ){
     cout << "Error at Input: please specify number of events to generate "<< endl;
     cout << "Example:   ./sim -n 100 -o output.root" << endl;
-    cout << "Example:   ./sim -n 100 -b <bkg rate in Hz/mm^2> -o output.root" << endl;
-    cout << "Example:   ./sim -n 100 -b <bkg rate in Hz/mm^2> -p <make event displays> -o output.root" << endl;
+    cout << "Example:   ./sim -n 100 -b <bkg rate in kHz/strip> -o output.root" << endl;
+    cout << "Example:   ./sim -n 100 -b <bkg rate in Hz/strip> -p <make event displays> -o output.root" << endl;
     return 0;
   }
 
@@ -480,7 +506,8 @@ int main(int argc, char* argv[]) {
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
   cout << "\r >> Using BCID window: " << bc_wind << endl;
-  printf("\r >> Background rate of %d Hz per square mm",bkgrate);
+  printf("\r >> Background rate of %d Hz per strip",bkgrate);
+//   printf("\r >> Background rate of %d Hz per square mm",bkgrate);
   cout << endl;
   printf("\r >> Assuming chamber size: (%4.1f,%4.1f) in mm",xhigh-xlow, yhigh-ylow);
   cout << endl;
@@ -539,8 +566,8 @@ int main(int argc, char* argv[]) {
   time_t curr_time;
   for (int i = 0; i < nevents; i++){
 
-    if (nevents > 100){
-      if (i % ((int)nevents/100) == 0){
+    if (nevents > 1000){
+      if (i % ((int)nevents/1000) == 0){
         curr_time = time(NULL);
         progress(curr_time-timer, i, nevents);
       }
@@ -697,7 +724,8 @@ int main(int argc, char* argv[]) {
   mylog.open("log.txt");
   mylog << "x-road size(in strips): "<< XROAD <<", +/- neighbor roads (uv): "<< UVFACTOR <<"\n";
   mylog << "Using BCID window: " << bc_wind << "\n";
-  mylog << "Background rate of " << bkgrate << " Hz per square mm\n";
+  //  mylog << "Background rate of " << bkgrate << " Hz per square mm\n";
+  mylog << "Background rate of " << bkgrate << " Hz per strip\n";
   mylog << "Assuming chamber size: ("<<xhigh-xlow <<", "<< yhigh-ylow << ") in mm\n";
 
 
@@ -772,8 +800,8 @@ int main(int argc, char* argv[]) {
   h_xres->SetLineColor(kBlue-9);
   h_xres->SetFillColorAlpha(kBlue-9,0.4);
   h_xres->SetTitle("");
-  h_xres->Draw("PE");
-  //  h_xres->Draw("hist");
+  //h_xres->Draw("PE");
+  h_xres->Draw("hist");
   h_xres->SetMarkerStyle(8);
   h_xres->SetMarkerSize(1);
   h_xres->SetLineWidth(3);
