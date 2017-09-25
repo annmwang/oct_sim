@@ -77,7 +77,7 @@ double sig_art = 32.;
 // road size
 
 int XROAD = 8;
-int UVFACTOR = 4;
+int UVFACTOR = 2;
 
 // rates
 

@@ -103,8 +103,8 @@ inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
 inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor) {
   double slow, shigh;
   if (hit.MMFE8Index() > 1 && hit.MMFE8Index() < 6){
-    slow = roadsize*(m_iroad-uvfactor);
-    shigh = roadsize*(m_iroad+uvfactor+1);
+    slow = roadsize*(m_iroad-uvfactor - 1);
+    shigh = roadsize*(m_iroad+uvfactor+1 + 1);
   }
   else{
     slow = roadsize*(m_iroad-1);
