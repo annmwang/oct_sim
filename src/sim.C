@@ -41,6 +41,7 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 bool db = false; // debug output flag
 
+
 // SOME CONSTANTS
 
 int NBOARDS = 8;
@@ -52,11 +53,15 @@ double xhigh = NSTRIPS*0.4-0.2;
 double ylow = 0.;
 double yhigh = 500.;
 
+// double ylow = 0.;
+// double yhigh = 2200.;
+
 // active area
 double mu_xlow = 100*0.4+0.2;
 double mu_xhigh = NSTRIPS*0.4-0.2-100*0.4;
-double mu_ylow = 0.;
-double mu_yhigh = 500.;
+
+double mu_ylow = ylow;
+double mu_yhigh = yhigh;
 
 // // octuplet
 // int NBOARDS = 8;
@@ -79,9 +84,9 @@ double sig_art = 32.;
 int XROAD = 8;
 int UVFACTOR = 2;
 
-// rates
+//int UVFACTOR = 9;
 
-//int bkgrate = 10; // Hz per strip
+// rates
 
 // colors                                                                                                                                                                                   
 string pink = "\033[38;5;205m";
