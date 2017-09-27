@@ -53,8 +53,8 @@ double xhigh = NSTRIPS*0.4-0.2;
 double ylow = 0.;
 double yhigh = 500.;
 
-// double ylow = 0.;
-// double yhigh = 2200.;
+//double ylow = 0.;
+//double yhigh = 2200.;
 
 // active area
 double mu_xlow = 100*0.4+0.2;
@@ -86,6 +86,10 @@ int UVFACTOR = 2;
 
 //int UVFACTOR = 9;
 
+//int XROAD = 16;
+//int UVFACTOR = 1;
+//int UVFACTOR = 5;
+
 // rates
 
 // colors                                                                                                                                                                                   
@@ -99,6 +103,7 @@ struct slope_t {
   int count;
   int iroad;
   int imuonhits;
+  bool uvbkg;
   double mxl;
   double xavg;
   double yavg;
@@ -293,6 +298,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         m_slope.count = roads[i]->Count();
         m_slope.iroad = roads[i]->iRoad();
         m_slope.imuonhits = nmuonhits;
+	m_slope.uvbkg = roads[i]->UV_bkg();
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
         m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
