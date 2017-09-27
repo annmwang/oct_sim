@@ -80,12 +80,30 @@ inline void Road::Reset(){
 }
 
 inline int Road::Offset(int ib){
+  int offsets[3];
+  if (m_geometry->Get(0).ylen() == 200){
+    offsets[0] = 0;
+    offsets[1] = -6; 
+    offsets[2] = 7;
+  }
+  if (m_geometry->Get(0).ylen() == 500){
+    offsets[0] = 0;
+    offsets[1] = -16; 
+    offsets[2] = 17;
+  }
+  if (m_geometry->Get(0).ylen() == 2200){
+    offsets[0] = 0;
+    offsets[1] = -72; 
+    offsets[2] = 72;
+  }
   if (ib == 2 || ib == 4)
-    return -6;
+    //    return -6;
+    return offsets[1];
   else if (ib == 3 || ib == 5)
-    return 7;
+    //    return 7;
+    return offsets[2];
   else
-    return 0;
+    return offsets[0];
 }
 
 inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
