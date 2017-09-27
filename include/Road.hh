@@ -33,6 +33,7 @@ public:
   int NMuon();
   bool Horiz_ok();
   bool Stereo_ok();
+  bool UV_bkg();
   bool Mature(int wind);
   double Mxl();
   double Xpos(double ch, int ib);
@@ -211,6 +212,18 @@ bool Road::Stereo_ok(){
   }
   if (nu > 0 && nv > 0)
     return true;
+  return false;
+}
+
+bool Road::UV_bkg(){
+  for (int i = 0; i < m_hits.size(); i++){
+    if (m_hits[i].MMFE8Index() == 2 || m_hits[i].MMFE8Index() == 4)
+      if (m_hits[i].IsNoise() == true)
+        return true;
+    if (m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
+      if (m_hits[i].IsNoise() == true)
+        return true;
+  }
   return false;
 }
 

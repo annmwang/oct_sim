@@ -50,11 +50,11 @@ int NSTRIPS = 8800; // has to be multiple of x road
   
 double xlow = 0.;
 double xhigh = NSTRIPS*0.4-0.2;
-double ylow = 0.;
-double yhigh = 500.;
-
 //double ylow = 0.;
-//double yhigh = 2200.;
+//double yhigh = 500.;
+
+double ylow = 0.;
+double yhigh = 2200.;
 
 // active area
 double mu_xlow = 100*0.4+0.2;
@@ -82,9 +82,9 @@ double sig_art = 32.;
 // road size
 
 int XROAD = 8;
-int UVFACTOR = 2;
+//int UVFACTOR = 2;
 
-//int UVFACTOR = 9;
+int UVFACTOR = 9;
 
 //int XROAD = 16;
 //int UVFACTOR = 1;
@@ -634,9 +634,12 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    if (db)
+    if (db){
       cout << "N muonhits: " << hits.size() << endl;
-    
+      for (int j = 0; j < hits.size(); j++){
+        printf("Muon hit (board, BC, strip): (%d,%d,%4.4f)\n", hits[j]->MMFE8Index(),hits[j]->Age(),hits[j]->Channel());
+      }
+    }
     if (n_x1 > 0 && n_x2 > 0 && n_u > 0 && n_v > 0){
       nmuon_trig++;
       muon_trig_ok= true; 
@@ -680,12 +683,17 @@ int main(int argc, char* argv[]) {
     std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag);
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
-    if (ntrigroads == 0)
+    if (ntrigroads == 0 && muon_trig_ok){
+      //      if (db)
+        cout << "no triggered roads?" << endl;
       continue;
+    }
 
     // got a trigger, but none with real hits
     if (m_slopes.size() == 0){
       nevent_allnoise++;
+      if (db)
+        cout << "Didn't trigger with real hits:( " << endl;
       continue;
     }
 
