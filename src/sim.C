@@ -183,7 +183,8 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
 
   int noise_window = bc_wind * 3;
   int start_noise = start_bc - bc_wind;
-  int end_noise = start_bc + bc_wind * 2 -1;
+  int end_noise = start_noise + noise_window - 1;
+  // int end_noise = start_bc + bc_wind * 2 -1;
 
   //assume uniform distribution of background - correct for noise
   double bkgrate_bc = bkgrate * (25*pow(10,-9));
@@ -194,7 +195,7 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
       double prob = ran->Uniform(0,1.);
       if (prob < bkg_prob){
         Hit* newhit = nullptr;
-        newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), k,true, geometry);
+        newhit = new Hit(j, start_noise+ran->Integer(noise_window), k, true, geometry);
         bkghits.push_back(newhit);
       }
     }
@@ -562,6 +563,7 @@ int main(int argc, char* argv[]) {
   h_xres->Sumw2();
   TH1F * h_nmu = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
   TH2D * h_nmuvsdx = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
+  TH1D * h_dx = new TH1D("h_dx", "h_dx", 500, -3500,3500);
 
   h_mxres->StatOverflows(kTRUE);
   h_yres->StatOverflows(kTRUE);
@@ -654,6 +656,14 @@ int main(int argc, char* argv[]) {
       all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
     }
 
+
+    for (int i = 0; i < all_hits.size(); i++){
+      int ib = all_hits[i]->MMFE8Index();
+      if (all_hits[i]->IsNoise() &&
+	  (ib < 2 || ib > 5))
+	h_dx->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[i]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
+    }
+
     vector<Road*> m_roads = create_roads(*GEOMETRY);
     if (db)
       cout << "Number of roads: " << m_roads.size() << endl;
@@ -687,8 +697,19 @@ int main(int argc, char* argv[]) {
     myslope.xavg = 0.;
     myslope.yavg = 0.;
     myslope.imuonhits = 0;
-    for (int j = 0; j < m_slopes.size(); j++){
-      if (m_slopes[j].count > myslope.count){
+
+    vector<int> iroads;
+    for (int k = 0; k < m_slopes.size(); k++){
+      iroads.push_back(k);
+    }
+    
+    // shuffle roads so we don't have a bias from iterating through roads by index
+    std::random_shuffle(iroads.begin(),iroads.end());
+
+    // pick road with the most real muon hits
+    for (int k = 0; k < iroads.size(); k++){
+      int j = iroads[k];
+      if (m_slopes[j].imuonhits > myslope.imuonhits){
         myslope.count = m_slopes[j].count;
         myslope.mxl = m_slopes[j].mxl;
         myslope.xavg = m_slopes[j].xavg;
@@ -714,6 +735,11 @@ int main(int argc, char* argv[]) {
     h_mxres->Fill(deltaMX*1000.);
     h_yres->Fill(myslope.yavg-ymuon);
     h_xres->Fill(myslope.xavg-xmuon);
+    // if (myslope.xavg-xmuon < -2){
+    //   TString test = Form("event_disp_%d",i);
+    //   plttrk(myslope.slopehits, true, test, ntrigroads, fout);
+    // }
+      
     h_nmu->Fill(myslope.imuonhits);
     h_nmuvsdx->Fill(myslope.imuonhits, myslope.xavg-xmuon);
     if (muon_trig_ok)
@@ -760,6 +786,7 @@ int main(int argc, char* argv[]) {
   h_xres->Write();
   h_nmu->Write();
   h_nmuvsdx->Write();
+  h_dx->Write();
 
   // plot dump!
   TCanvas * c = new TCanvas("c", "canvas", 800, 800);
