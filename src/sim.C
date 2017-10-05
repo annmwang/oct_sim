@@ -51,10 +51,10 @@ int NSTRIPS = 8800; // has to be multiple of x road
 double xlow = 0.;
 double xhigh = NSTRIPS*0.4-0.2;
 //double ylow = 0.;
-//double yhigh = 500.;
+double yhigh = 500.;
 
 double ylow = 0.;
-double yhigh = 2200.;
+//double yhigh = 2200.;
 
 // active area
 double mu_xlow = 100*0.4+0.2;
@@ -81,13 +81,13 @@ double sig_art = 32.;
 
 // road size
 
-int XROAD = 8;
+//int XROAD = 8;
 //int UVFACTOR = 2;
 
-int UVFACTOR = 9;
+//int UVFACTOR = 9;
 
-//int XROAD = 16;
-//int UVFACTOR = 1;
+int XROAD = 16;
+int UVFACTOR = 1;
 //int UVFACTOR = 5;
 
 // rates
@@ -552,6 +552,7 @@ int main(int argc, char* argv[]) {
 
   // counters
   int nmuon_trig = 0;
+  int nuv_bkg = 0;
   int neventtrig = 0;
   int extratrig = 0;
   
@@ -563,7 +564,7 @@ int main(int argc, char* argv[]) {
   // book histos
   //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
   TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
-  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 123, -20.5, 20.5);
+  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 140, -3500, 3500);
   //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
   TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
   h_xres->Sumw2();
@@ -718,6 +719,7 @@ int main(int argc, char* argv[]) {
       if (m_slopes[j].imuonhits > myslope.imuonhits){
         myslope.count = m_slopes[j].count;
         myslope.mxl = m_slopes[j].mxl;
+	myslope.uvbkg = m_slopes[j].uvbkg;
         myslope.xavg = m_slopes[j].xavg;
         myslope.yavg = m_slopes[j].yavg;
         myslope.imuonhits = m_slopes[j].imuonhits;
@@ -752,12 +754,14 @@ int main(int argc, char* argv[]) {
       neventtrig++;
     else
       extratrig++;
-
+    if (myslope.uvbkg)
+      nuv_bkg++;
   }
   cout << endl;
   cout << endl;
   cout << blue << "SIMULATION SUMMARY:" << ending << endl;
   cout << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger"<< endl;
+  cout << nuv_bkg << " triggers with spoiled uv hits"<< endl;
   cout << extratrig << " extra trigger events " << endl;
   cout << nevent_allnoise << " events where triggers were only made with bkg hits" << endl;
   cout << endl;
