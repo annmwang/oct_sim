@@ -101,6 +101,9 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
     ylow = 17.9;
     yhigh = 217.9;
   }
+  else {
+    exit (EXIT_FAILURE);
+  }
 
   // active area
   mu_xlow = 100*0.4+0.2;
@@ -591,7 +594,12 @@ int main(int argc, char* argv[]) {
 
   double xlen = xhigh-xlow;
   double ylen = yhigh-ylow; 
-  GeoOctuplet* GEOMETRY = new GeoOctuplet(true,xlen,ylen);
+
+  GeoOctuplet* GEOMETRY;
+  if (string(chamberType) == "oct")
+    GEOMETRY = new GeoOctuplet(false,xlen,ylen);
+  else
+    GEOMETRY = new GeoOctuplet(true,xlen,ylen);
 
   // counters
   int nmuon_trig = 0;

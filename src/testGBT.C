@@ -82,7 +82,7 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
 
   vector<slope_t> slopes;
 
-  for (int i=0; i < hits.size(); i++){
+  for (unsigned int i=0; i < hits.size(); i++){
     if (hits[i]->Age() < bc_start)
       bc_start = hits[i]->Age();
     if (hits[i]->Age() > bc_end)
@@ -93,7 +93,7 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
 
 
   // each road makes independent triggers
-  for (int i = 0; i < roads.size(); i++){
+  for (unsigned int i = 0; i < roads.size(); i++){
 
     roads[i]->Reset();
 
@@ -103,12 +103,12 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
       hits_now.clear();
       roads[i]->Increment_Age(bc_wind);
 
-      for (int j = 0; j < hits.size(); j++){
+      for (unsigned int j = 0; j < hits.size(); j++){
         // BC window
         if (hits[j]->Age() == bc){
           // add into hits_now so that it is sorted by strip number
           bool added_hit = false;
-          for (int k = 0; k < hits_now.size(); k++){
+          for (unsigned int k = 0; k < hits_now.size(); k++){
             if (hits_now[k]->Channel() > hits[j]->Channel()){
               hits_now.insert(hits_now.begin()+k,hits[j]);
               added_hit = true;
@@ -130,7 +130,7 @@ vector<slope_t> finder(vector<Hit*> hits, vector<Road*> roads){
         cout << "FOUND COINCIDENCE @ BC " << bc << endl;
         cout << "Road (i,count): ("<< roads[i]->iRoad() <<", " << roads[i]->Count()<<")" << endl;
         cout << "---------------------------" << endl;
-        for (int k = 0; k < roads[i]->Hits().size(); k++){
+        for (unsigned int k = 0; k < roads[i]->Hits().size(); k++){
           printf("Hit (board, BC, channel*pitch): (%d,%d,%4.4f)\n",roads[i]->Hits()[k].MMFE8Index(),roads[i]->Hits()[k].Age(),roads[i]->Hits()[k].Channel()*0.4);
         }
         ntrigs++;
@@ -210,7 +210,7 @@ int main() {
   myslope.mxl = 0.;
   myslope.count = 0;
   int myslopecount = 0;
-  for (int j = 0; j < m_slopes.size(); j++){
+  for (unsigned int j = 0; j < m_slopes.size(); j++){
     if (m_slopes[j].count > myslope.count){
       myslope.count = m_slopes[j].count;
       myslope.mxl = m_slopes[j].mxl;
@@ -263,7 +263,7 @@ int main() {
     cout << "Ntriggered roads: " << ntrigroads << endl;
   myslope.mxl = 0.;
   myslope.count = 0;
-  for (int j = 0; j < m_slopes.size(); j++){
+  for (unsigned int j = 0; j < m_slopes.size(); j++){
     if (m_slopes[j].count > myslope.count){
       myslope.count = m_slopes[j].count;
       myslope.mxl = m_slopes[j].mxl;
@@ -307,7 +307,7 @@ int main() {
     cout << "Ntriggered roads: " << ntrigroads << endl;
   myslope.mxl = 0.;
   myslope.count = 0;
-  for (int j = 0; j < m_slopes.size(); j++){
+  for (unsigned int j = 0; j < m_slopes.size(); j++){
     if (m_slopes[j].count > myslope.count){
       myslope.count = m_slopes[j].count;
       myslope.mxl = m_slopes[j].mxl;

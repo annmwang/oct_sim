@@ -140,12 +140,12 @@ inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor)
 }
 
 inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor){
-  for (int i = 0; i < hits.size(); i++){
+  for (unsigned int i = 0; i < hits.size(); i++){
     int bo = hits[i]->MMFE8Index();
     bool has_hit = false;
     if (Contains_Neighbors(*hits[i], roadsize, uvfactor)){
       // check if hit exists on the plane already
-      for (int j = 0; j < m_hits.size(); j++){
+      for (unsigned int j = 0; j < m_hits.size(); j++){
         if (m_hits[j].MMFE8Index() == bo){
           has_hit = true;
           //std::cout << "already has hit on plane: " << bo << std::endl;
@@ -162,7 +162,7 @@ inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor)
 void Road::Increment_Age(int wind){
   int nlost = 0;
   std::vector<int> old_ihits;
-  for (int j = 0; j < m_hits.size(); j++){
+  for (unsigned int j = 0; j < m_hits.size(); j++){
     m_hits[j].SetAge(m_hits[j].Age()+1);
     if (m_hits[j].Age() > wind){
       old_ihits.push_back(j);
@@ -180,7 +180,7 @@ bool Road::Coincidence(int wind){
 
 int Road::NMuon(){
   int nreal = 0;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     if (m_hits[i].IsNoise() == false)
       nreal++;
   }
@@ -190,7 +190,7 @@ int Road::NMuon(){
 bool Road::Horiz_ok(){
   int nx1 = 0;
   int nx2 = 0;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     if (m_hits[i].MMFE8Index() < 2)
       nx1++;
     if (m_hits[i].MMFE8Index() > 5)
@@ -204,7 +204,7 @@ bool Road::Horiz_ok(){
 bool Road::Stereo_ok(){
   int nu = 0;
   int nv = 0;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     if (m_hits[i].MMFE8Index() == 2 || m_hits[i].MMFE8Index() == 4)
       nu++;
     if (m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
@@ -216,7 +216,7 @@ bool Road::Stereo_ok(){
 }
 
 bool Road::UV_bkg(){
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     if (m_hits[i].MMFE8Index() == 2 || m_hits[i].MMFE8Index() == 4)
       if (m_hits[i].IsNoise() == true)
         return true;
@@ -228,7 +228,7 @@ bool Road::UV_bkg(){
 }
 
 bool Road::Mature(int wind){
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     if (m_hits[i].Age() == wind)
       return true;
   }
@@ -238,7 +238,7 @@ bool Road::Mature(int wind){
 double Road::Mxl(){
   std::vector<double> xs;
   std::vector<double> zs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo < 2 || bo > 5){
       double vmm_ch = m_hits[i].Channel()* 0.4;
@@ -249,7 +249,7 @@ double Road::Mxl(){
   double mxl = 0.;
   double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
   double sum_sq_z = std::inner_product(zs.begin(), zs.end(), zs.begin(), 0.0);
-  for (int i = 0; i < xs.size(); i++){
+  for (unsigned int i = 0; i < xs.size(); i++){
     mxl += xs[i]*( (zs[i]-avg_z) / (sum_sq_z - zs.size()*pow(avg_z,2)));
   }
   return mxl;
@@ -264,7 +264,7 @@ double Road::AvgXofX(){
   // avg x over x boards
 
   std::vector<double> xs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo < 2 || bo > 5){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
@@ -279,7 +279,7 @@ double Road::AvgXofU(){
   // avg x over u boards
 
   std::vector<double> xs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 2 || bo == 4){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
@@ -294,7 +294,7 @@ double Road::AvgXofV(){
   // avg x over v boards
 
   std::vector<double> xs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 3 || bo == 5){
       double vmm_ch = Xpos(m_hits[i].Channel(),bo);
@@ -310,7 +310,7 @@ double Road::AvgZofX(){
 
   std::vector<double> xs;
   std::vector<double> zs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo < 2 || bo > 5){
       double vmm_ch = m_hits[i].Channel()* 0.4;
@@ -327,7 +327,7 @@ double Road::AvgZofU(){
 
   std::vector<double> xs;
   std::vector<double> zs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 2 || bo == 4){
       double vmm_ch = m_hits[i].Channel()* 0.4;
@@ -344,7 +344,7 @@ double Road::AvgZofV(){
 
   std::vector<double> xs;
   std::vector<double> zs;
-  for (int i = 0; i < m_hits.size(); i++){
+  for (unsigned int i = 0; i < m_hits.size(); i++){
     int bo = m_hits[i].MMFE8Index();
     if (bo == 3 || bo == 5){
       double vmm_ch = m_hits[i].Channel()* 0.4;
