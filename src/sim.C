@@ -41,7 +41,9 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 bool db = false; // debug output flag
 
-int NBOARDS = 9;
+// SOME CONSTANTS
+
+int NBOARDS = 8;
 int NSTRIPS;
 double xlow, xhigh, ylow, yhigh; // chamber dimensions
 double mu_xlow, mu_xhigh, mu_ylow, mu_yhigh; // active chamber area to decouple edge effects
@@ -54,52 +56,7 @@ double sig_art;
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
 double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
-// SOME CONSTANTS
-
-// int NBOARDS = 8;
-// //int NSTRIPS = 512; // has to be multiple of x road
-// int NSTRIPS = 8800; // has to be multiple of x road
-  
-// double xlow = 0.;
-// double xhigh = NSTRIPS*0.4-0.2;
-// //double ylow = 0.;
-// double yhigh = 500.;
-
-// double ylow = 0.;
-// //double yhigh = 2200.;
-
-// // active area
-// double mu_xlow = 100*0.4+0.2;
-// double mu_xhigh = NSTRIPS*0.4-0.2-100*0.4;
-
-// double mu_ylow = ylow;
-// double mu_yhigh = yhigh;
-
-// // // octuplet
-// // int NBOARDS = 8;
-// // int NSTRIPS = 512;
-  
-// // double xlow = 0.;
-// // double xhigh = NSTRIPS*0.4-0.2;
-// // double ylow = 17.9;
-// // double yhigh = 217.9;
-
-
-//int bc_wind = 8;
-
-
-//double sig_art = 32.;
-
-// // road size
-
-// int XROAD = 8;
-// int UVFACTOR = 2;
-
-// //int UVFACTOR = 9;
-
-// rates
-
-// colors                                                                                                                                                                                   
+// colors
 string pink = "\033[38;5;205m";
 string green = "\033[38;5;84m";
 string blue = "\033[38;5;27m";
@@ -110,6 +67,7 @@ struct slope_t {
   int count;
   int iroad;
   int imuonhits;
+  bool uvbkg;
   double mxl;
   double xavg;
   double yavg;
@@ -348,6 +306,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         m_slope.count = roads[i]->Count();
         m_slope.iroad = roads[i]->iRoad();
         m_slope.imuonhits = nmuonhits;
+	m_slope.uvbkg = roads[i]->UV_bkg();
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
         m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
@@ -633,6 +592,7 @@ int main(int argc, char* argv[]) {
 
   // counters
   int nmuon_trig = 0;
+  int nuv_bkg = 0;
   int neventtrig = 0;
   int extratrig = 0;
   
@@ -644,7 +604,7 @@ int main(int argc, char* argv[]) {
   // book histos
   //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
   TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
-  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 123, -20.5, 20.5);
+  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 140, -3500, 3500);
   //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
   TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
   h_xres->Sumw2();
@@ -799,6 +759,7 @@ int main(int argc, char* argv[]) {
       if (m_slopes[j].imuonhits > myslope.imuonhits){
         myslope.count = m_slopes[j].count;
         myslope.mxl = m_slopes[j].mxl;
+	myslope.uvbkg = m_slopes[j].uvbkg;
         myslope.xavg = m_slopes[j].xavg;
         myslope.yavg = m_slopes[j].yavg;
         myslope.imuonhits = m_slopes[j].imuonhits;
@@ -833,12 +794,14 @@ int main(int argc, char* argv[]) {
       neventtrig++;
     else
       extratrig++;
-
+    if (myslope.uvbkg)
+      nuv_bkg++;
   }
   cout << endl;
   cout << endl;
   cout << blue << "SIMULATION SUMMARY:" << ending << endl;
   cout << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger"<< endl;
+  cout << nuv_bkg << " triggers with spoiled uv hits"<< endl;
   cout << extratrig << " extra trigger events " << endl;
   cout << nevent_allnoise << " events where triggers were only made with bkg hits" << endl;
   cout << endl;
