@@ -11,5 +11,15 @@ source hero_setup.sh
 
 ```{r, engine='bash', count_lines}
 make
-./sim
+./sim 
+./sim -n 100 -ch <chamber type> -b <bkg rate in Hz/strip> -p <make event displays> -o output.root
 ```
+Configurable parameters include:
+* [-n] nevents generated
+* [-sig] ART resolution (ns)
+* [-x] road size
+* [-w] BC window size
+* [-ch] chamber type
+* [-b] bkg rate in Hz/strip
+* [-p] plotting
+* [-o] output file
