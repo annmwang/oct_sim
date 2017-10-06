@@ -28,6 +28,7 @@ public:
   int isV() const;
   double x_pos() const;
   double y_pos() const;
+  double x_pos_at_end() const;
   bool IsNoise() const;
 
   void SetMMFE8Index(int ib);
@@ -40,6 +41,7 @@ private:
   int m_Age;
   double m_x_pos;
   double m_y_pos;
+  double m_x_pos_at_end;
   double m_strip;
   bool m_IsNoise;
 
@@ -52,6 +54,7 @@ inline Hit::Hit(){
   m_Age = -1;
   m_x_pos = -1;
   m_y_pos = -1;
+  m_x_pos_at_end = -1;
   m_IsNoise = false;
   m_geometry = nullptr;
   m_strip = -1;
@@ -66,16 +69,18 @@ inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const 
   m_geometry = &geometry;
   //  std::cout << "for board: " << ib << std::endl;
   m_strip = m_geometry->Get(ib).channel_from_pos(xpos,ypos);
+  m_x_pos_at_end = m_geometry->Get(ib).LocalXatYend(m_strip)+m_geometry->Get(ib).Origin().X();
 }
 
 inline Hit::Hit(int ib, int age, double strip, bool is_noise, const GeoOctuplet& geometry){
   m_MMFE8index = ib;
   m_Age = age;
-  m_x_pos = -1.;
   m_y_pos = -1.;
+  m_x_pos = -1.;
   m_IsNoise = is_noise;
   m_geometry = &geometry;
   m_strip = strip;
+  m_x_pos_at_end = m_geometry->Get(ib).LocalXatYend(m_strip)+m_geometry->Get(ib).Origin().X();
 }
 
 inline Hit::~Hit(){
@@ -119,6 +124,10 @@ inline double Hit::y_pos() const{
   return m_y_pos;
 }
 
+inline double Hit::x_pos_at_end() const{
+  return m_x_pos_at_end;
+}
+
 inline bool Hit::IsNoise() const{
   return m_IsNoise;
 }
@@ -127,6 +136,7 @@ inline void Hit::SetPos(double xpos, double ypos, int ib){
   m_x_pos = xpos;
   m_y_pos = ypos;
   m_strip =  m_geometry->Get(ib).channel_from_pos(m_x_pos,m_y_pos);
+  m_x_pos_at_end = m_geometry->Get(ib).LocalXatYend(m_strip)+m_geometry->Get(ib).Origin().X();
   m_MMFE8index = ib;
 }
 

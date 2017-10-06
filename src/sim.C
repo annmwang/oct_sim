@@ -41,50 +41,61 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 bool db = false; // debug output flag
 
+int NBOARDS = 9;
+int NSTRIPS;
+double xlow, xhigh, ylow, yhigh; // chamber dimensions
+double mu_xlow, mu_xhigh, mu_ylow, mu_yhigh; // active chamber area to decouple edge effects
+
+int XROAD, UVFACTOR;
+
+int bc_wind;
+double sig_art;
+
+double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
 // SOME CONSTANTS
 
-int NBOARDS = 8;
-//int NSTRIPS = 512; // has to be multiple of x road
-int NSTRIPS = 8800; // has to be multiple of x road
-  
-double xlow = 0.;
-double xhigh = NSTRIPS*0.4-0.2;
-//double ylow = 0.;
-//double yhigh = 500.;
-
-double ylow = 0.;
-double yhigh = 2200.;
-
-// active area
-double mu_xlow = 100*0.4+0.2;
-double mu_xhigh = NSTRIPS*0.4-0.2-100*0.4;
-
-double mu_ylow = ylow;
-double mu_yhigh = yhigh;
-
-// // octuplet
 // int NBOARDS = 8;
-// int NSTRIPS = 512;
+// //int NSTRIPS = 512; // has to be multiple of x road
+// int NSTRIPS = 8800; // has to be multiple of x road
   
 // double xlow = 0.;
 // double xhigh = NSTRIPS*0.4-0.2;
-// double ylow = 17.9;
-// double yhigh = 217.9;
+// //double ylow = 0.;
+// double yhigh = 500.;
 
-double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+// double ylow = 0.;
+// //double yhigh = 2200.;
 
-int bc_wind = 8;
-double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
+// // active area
+// double mu_xlow = 100*0.4+0.2;
+// double mu_xhigh = NSTRIPS*0.4-0.2-100*0.4;
 
-double sig_art = 32.;
+// double mu_ylow = ylow;
+// double mu_yhigh = yhigh;
 
-// road size
+// // // octuplet
+// // int NBOARDS = 8;
+// // int NSTRIPS = 512;
+  
+// // double xlow = 0.;
+// // double xhigh = NSTRIPS*0.4-0.2;
+// // double ylow = 17.9;
+// // double yhigh = 217.9;
 
-int XROAD = 8;
-//int UVFACTOR = 2;
 
-int UVFACTOR = 9;
+//int bc_wind = 8;
+
+
+//double sig_art = 32.;
+
+// // road size
+
+// int XROAD = 8;
+// int UVFACTOR = 2;
+
+// //int UVFACTOR = 9;
 
 // rates
 
@@ -104,6 +115,50 @@ struct slope_t {
   double yavg;
   vector<Hit> slopehits;
 };
+
+void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
+  // function to set parameters in a smart way
+
+  if (chamber == "small"){
+
+    NSTRIPS = 8800; // has to be multiple of x road
+    xlow = 0.;
+    xhigh = NSTRIPS*0.4-0.2;
+    ylow = 0.;
+    yhigh = 500.;
+  }
+  else if (chamber == "large"){
+
+    NSTRIPS = 8800; // has to be multiple of x road
+    xlow = 0.;
+    xhigh = NSTRIPS*0.4-0.2;
+    ylow = 0.;
+    yhigh = 2200.;
+  }
+  else if (chamber == "oct"){
+
+    NSTRIPS = 512; // has to be multiple of x road
+    xlow = 0.;
+    xhigh = NSTRIPS*0.4-0.2;
+    ylow = 17.9;
+    yhigh = 217.9;
+  }
+
+  // active area
+  mu_xlow = 100*0.4+0.2;
+  mu_xhigh = NSTRIPS*0.4-0.2-100*0.4;
+
+  mu_ylow = ylow;
+  mu_yhigh = yhigh;
+
+  bc_wind = m_wind;
+
+  sig_art = m_sig_art;
+
+  XROAD = m_xroad;
+  UVFACTOR = round((yhigh-ylow)/(B * 0.4 * 2)/XROAD);
+  
+}
 
 
 tuple<double,double> cosmic_angle(){
@@ -348,7 +403,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     if (hits[i].IsNoise() == false){
       ib.push_back(hits[i].MMFE8Index());
       if (xflag){
-        pts.push_back(hits[i].x_pos());
+        pts.push_back(hits[i].x_pos_at_end());
       }
       else{
         pts.push_back(hits[i].y_pos());
@@ -359,7 +414,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     else{
       bkgib.push_back(hits[i].MMFE8Index());
       if (xflag){
-        bkgpts.push_back(hits[i].x_pos());
+        bkgpts.push_back(hits[i].x_pos_at_end());
       }
       else{
         bkgpts.push_back(hits[i].y_pos());
@@ -380,8 +435,14 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
       Double_t board_x[2];
       Double_t board_z[2];      
       if (xflag){
-        board_x[0] = xlow;
-        board_x[1] = xhigh;
+        if (bkgpts.size() > 0){
+        board_x[0] = *min_element(bkgpts.begin(),bkgpts.end())-10.;
+        board_x[1] = *max_element(bkgpts.begin(),bkgpts.end())+10;
+        }
+        else{
+         board_x[0] = xlow;
+         board_x[1] = xhigh;
+        }
       }
       else {
         board_x[0] = ylow;
@@ -438,8 +499,8 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     l1->SetTextColor(kBlack);
     l1->SetTextAlign(21);
     l1->SetNDC();
-    l1->DrawLatex(0.4,0.5,Form("ntrig: %d for %d (x), ",ntrig, XROAD));
-    l1->DrawLatex(0.4,0.45,Form("+/- %d neighbors (uv)",UVFACTOR));
+    //    l1->DrawLatex(0.4,0.5,Form("ntrig: %d for %d (x), ",ntrig, XROAD));
+    //l1->DrawLatex(0.4,0.45,Form("+/- %d neighbors (uv)",UVFACTOR));
   
   
   if (xflag){
@@ -462,10 +523,15 @@ int main(int argc, char* argv[]) {
   int nevents = -1;
   int bkgrate = -1; // Hz per strip
 
+  int m_xroad = 8;
+  int m_bcwind = 8;
+  double m_sig_art = 32.;
+
   bool bkgflag = false;
   bool pltflag = false;
 
   char outputFileName[400];
+  char chamberType[400];
 
   if ( argc < 3 ){
     cout << "Error at Input: please specify number of events to generate "<< endl;
@@ -476,7 +542,8 @@ int main(int argc, char* argv[]) {
   }
 
   bool b_out = false;
-  
+  bool ch_type = false;
+
   for (int i=1;i<argc-1;i++){
     if (strncmp(argv[i],"-n",2)==0){
       nevents = atoi(argv[i+1]);
@@ -484,6 +551,19 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-o",2)==0){
       sscanf(argv[i+1],"%s", outputFileName);
       b_out = true;
+    }
+    if (strncmp(argv[i],"-x",2)==0){
+      m_xroad = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-w",2)==0){
+      m_bcwind = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-ch",3)==0){
+      sscanf(argv[i+1],"%s", chamberType);
+      ch_type = true;
+    }
+    if (strncmp(argv[i],"-sig",4)==0){
+      m_sig_art = atof(argv[i+1]);
     }
     if (strncmp(argv[i],"-b",2)==0){
       bkgrate = atoi(argv[i+1]);
@@ -498,10 +578,17 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
+  if (!ch_type){
+    cout << "Error at Input: please specify chamber type (-ch flag, options: large, small, oct)" << endl;
+    return 0;
+  }
+
   if (nevents == -1){
     cout << "Didn't set the number of generated events! Exiting." << endl;
     return 0;
   }
+
+  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad);
   
   cout << endl;
   cout << blue << "--------------" << ending << endl;
