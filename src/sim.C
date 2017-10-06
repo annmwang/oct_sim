@@ -613,19 +613,27 @@ int main(int argc, char* argv[]) {
   bool muon_trig_ok = false;
 
   // book histos
-  //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
-  TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
-  TH1F * h_yres = new TH1F("h_yres", "#DeltaY", 140, -3500, 3500);
-  //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
-  TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
-  h_xres->Sumw2();
-  TH1F * h_nmu = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
-  TH2D * h_nmuvsdx = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
-  TH1D * h_dx = new TH1D("h_dx", "h_dx", 500, -3500,3500);
 
-  h_mxres->StatOverflows(kTRUE);
-  h_yres->StatOverflows(kTRUE);
-  h_xres->StatOverflows(kTRUE);
+  std::map< string, TH1F* > hists;
+  std::map< string, TH2D* > hists_2d;
+  
+  //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
+  hists["h_mxres"] = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
+  hists["h_yres"] = new TH1F("h_yres", "#DeltaY", 140, -3500, 3500);
+  //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
+  hists["h_xres"] = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
+
+  hists["h_nmu"] = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
+  hists_2d["h_nmuvsdx"] = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
+  hists["h_dx"] = new TH1F("h_dx", "h_dx", 500, -3500,3500);
+
+  hists["h_mxres"]->Sumw2();
+  hists["h_yres"]->Sumw2();
+  hists["h_xres"]->Sumw2();
+
+  hists["h_mxres"]->StatOverflows(kTRUE);
+  hists["h_yres"]->StatOverflows(kTRUE);
+  hists["h_xres"]->StatOverflows(kTRUE);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -719,7 +727,7 @@ int main(int argc, char* argv[]) {
       int ib = all_hits[i]->MMFE8Index();
       if (all_hits[i]->IsNoise() &&
 	  (ib < 2 || ib > 5))
-	h_dx->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[i]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
+	hists["h_dx"]->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[i]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
     }
 
     vector<Road*> m_roads = create_roads(*GEOMETRY);
@@ -791,16 +799,16 @@ int main(int argc, char* argv[]) {
       cout << endl;
     }
     //      cout << "art (x,y): (" << myslope.xavg << "," << myslope.yavg << ")"<< endl;
-    h_mxres->Fill(deltaMX*1000.);
-    h_yres->Fill(myslope.yavg-ymuon);
-    h_xres->Fill(myslope.xavg-xmuon);
+    hists["h_mxres"]->Fill(deltaMX*1000.);
+    hists["h_yres"]->Fill(myslope.yavg-ymuon);
+    hists["h_xres"]->Fill(myslope.xavg-xmuon);
     // if (myslope.xavg-xmuon < -2){
     //   TString test = Form("event_disp_%d",i);
     //   plttrk(myslope.slopehits, true, test, ntrigroads, fout);
     // }
       
-    h_nmu->Fill(myslope.imuonhits);
-    h_nmuvsdx->Fill(myslope.imuonhits, myslope.xavg-xmuon);
+    hists["h_nmu"]->Fill(myslope.imuonhits);
+    hists_2d["h_nmuvsdx"]->Fill(myslope.imuonhits, myslope.xavg-xmuon);
     if (muon_trig_ok)
       neventtrig++;
     else
@@ -844,13 +852,18 @@ int main(int argc, char* argv[]) {
   fout->mkdir("histograms");
   fout->cd("histograms");
   
-  h_mxres->Write();
-  h_yres->Write();
-  h_xres->Write();
-  h_nmu->Write();
-  h_nmuvsdx->Write();
-  h_dx->Write();
-
+  std::map<string, TH1F*>::iterator it = hists.begin();
+  while (it != hists.end())
+    {
+      it->second->Write();
+      it++;
+    }
+  std::map<string, TH2D*>::iterator it2 = hists_2d.begin();
+  while (it2 != hists_2d.end())
+    {
+      it2->second->Write();
+      it2++;
+    }
   fout->cd();
   fout->Close();
   return 0;
