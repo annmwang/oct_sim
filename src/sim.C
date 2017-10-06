@@ -851,69 +851,6 @@ int main(int argc, char* argv[]) {
   h_nmuvsdx->Write();
   h_dx->Write();
 
-  // plot dump!
-  TCanvas * c = new TCanvas("c", "canvas", 800, 800);
-  c->cd();
-
-  // theta res
-  h_mxres->GetXaxis()->SetTitle("#Delta#theta (mrad)");
-  h_mxres->GetYaxis()->SetTitle("Events");
-  h_mxres->GetYaxis()->SetTitleOffset(1.9);
-  h_mxres->SetTitle("");
-  h_mxres->SetLineColor(kTeal-5);
-  h_mxres->SetFillColorAlpha(kTeal-5,0.4);
-  h_mxres->SetMarkerStyle(8);
-  h_mxres->SetMarkerSize(1);
-  h_mxres->SetLineWidth(3);
-  h_mxres->Draw("hist");
-
-  TLatex* l1 = new TLatex();
-  l1->SetTextSize(0.03);
-  l1->SetTextColor(kRed);
-  l1->SetTextAlign(21);
-  l1->SetNDC();
-  l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mrad",h_mxres->GetRMS()));
-  c->Print("mxres.pdf");
-  c->SetLogy(1);
-  c->Print("mxres_log.pdf");
-  c->SetLogy(0);
-  c->Clear();
-
-
-  h_yres->GetXaxis()->SetTitle("#Deltay (mm)");
-  h_yres->GetYaxis()->SetTitle("Events");
-  h_yres->GetYaxis()->SetTitleOffset(1.9);
-  h_yres->SetTitle("");
-  h_yres->SetLineColor(kGreen+3);
-  h_yres->SetFillColorAlpha(kGreen+3,0.4);
-  h_yres->SetMarkerStyle(8);
-  h_yres->SetMarkerSize(1);
-  h_yres->SetLineWidth(3);
-  h_yres->Draw("hist");
-  l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mm",h_yres->GetRMS()));
-  c->Print("yres.pdf");
-  c->SetLogy(1);
-  c->Print("yres_log.pdf");
-  c->SetLogy(0);
-  c->Clear();
-
-  h_xres->GetXaxis()->SetTitle("#Deltax (mm)");
-  h_xres->GetYaxis()->SetTitle("Events");
-  h_xres->GetYaxis()->SetTitleOffset(1.9);
-  h_xres->SetLineColor(kBlue-9);
-  h_xres->SetFillColorAlpha(kBlue-9,0.4);
-  h_xres->SetTitle("");
-  //h_xres->Draw("PE");
-  h_xres->Draw("hist");
-  h_xres->SetMarkerStyle(8);
-  h_xres->SetMarkerSize(1);
-  h_xres->SetLineWidth(3);
-  l1->DrawLatex(0.35,0.6,Form("RMS = %3.1f mm",h_xres->GetRMS()));
-  c->Print("xres.pdf");
-  c->SetLogy(1);
-  c->Print("xres_log.pdf");
-  c->SetLogy(0);
-
   fout->cd();
   fout->Close();
   return 0;
