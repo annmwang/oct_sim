@@ -128,7 +128,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
   vector<Road*> m_roads;
-  for (int i = 0; i < nroad; i++){
+  for ( int i = 0; i < nroad; i++){
     Road* myroad = nullptr;
     myroad = new Road(i, geometry);
     m_roads.push_back(myroad);
@@ -150,7 +150,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
 
   double avgz = 0.5*(zpos[0]+zpos[NBOARDS-1]);
   double z, x_b, y_b;
-  for (int j = 0; j < NBOARDS; j++){
+  for ( int j = 0; j < NBOARDS; j++){
     z = zpos[j];
     x_b = TMath::Tan(thx)*(zpos[j]-avgz)+x;
     y_b = TMath::Tan(thy)*(zpos[j]-avgz)+y;
@@ -175,11 +175,11 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
 //   double expbkg = bkgrate_bc * noise_window  * plane_area;
 
 
-//   for (int j = 0; j < NBOARDS; j++){
+//   for ( int j = 0; j < NBOARDS; j++){
 //     //int nbkg = expbkg;
 //     int nbkg = ran->Poisson(expbkg);
 //     double x, y;
-//     for (int k = 0; k < nbkg; k++){
+//     for ( int k = 0; k < nbkg; k++){
 //       x = ran->Uniform(xlow, xhigh);
 //       y = ran->Uniform(ylow, yhigh);
 //       Hit* newhit = nullptr;
@@ -202,9 +202,9 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   //assume uniform distribution of background - correct for noise
   double bkgrate_bc = bkgrate * (25*pow(10,-9));
   double bkg_prob = bkgrate_bc*noise_window;
-  for (int j = 0; j < NBOARDS; j++){
+  for ( int j = 0; j < NBOARDS; j++){
     //int nbkg = expbkg;
-    for (int k = 0; k < NSTRIPS; k++){
+    for ( int k = 0; k < NSTRIPS; k++){
       double prob = ran->Uniform(0,1.);
       if (prob < bkg_prob){
         Hit* newhit = nullptr;
@@ -221,7 +221,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   
   int n_mm = 0;
   vector<int> oct_hitmask(NBOARDS,0);
-  for (int j=0; j < NBOARDS; j++){
+  for ( int j=0; j < NBOARDS; j++){
     if (ran->Uniform(0.,1.) < mm_eff[j]){
       oct_hitmask[j] = 1;
       n_mm++;
@@ -241,7 +241,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
 
   vector<slope_t> slopes;
 
-  for (int i=0; i < hits.size(); i++){
+  for (unsigned int i=0; i < hits.size(); i++){
     if (hits[i]->Age() < bc_start)
       bc_start = hits[i]->Age();
     if (hits[i]->Age() > bc_end)
@@ -252,24 +252,24 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
 
 
   // each road makes independent triggers
-  for (int i = 0; i < roads.size(); i++){
+  for (unsigned int i = 0; i < roads.size(); i++){
 
     roads[i]->Reset();
 
     vector<Hit*> hits_now;
 
-    for (int bc = bc_start; bc < bc_end; bc++){
+    for ( int bc = bc_start; bc < bc_end; bc++){
       //cout << "bunch crossing: " << bc << endl;
       hits_now.clear();
 
       roads[i]->Increment_Age(bc_wind);
 
-      for (int j = 0; j < hits.size(); j++){
+      for (unsigned int j = 0; j < hits.size(); j++){
         // BC window
         if (hits[j]->Age() == bc){
           // add into hits_now so that it is sorted by strip number
           bool added_hit = false;
-          for (int k = 0; k < hits_now.size(); k++){
+          for (unsigned int k = 0; k < hits_now.size(); k++){
             if (hits_now[k]->Channel() > hits[j]->Channel()){
               hits_now.insert(hits_now.begin()+k,hits[j]);
               added_hit = true;
@@ -289,7 +289,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
           cout << "FOUND COINCIDENCE @ BC " << bc << endl;
           cout << "Road (i,count): ("<< roads[i]->iRoad() <<", " << roads[i]->Count()<<")" << endl;
           cout << "---------------------------" << endl;
-          for (int k = 0; k < roads[i]->Hits().size(); k++){
+          for (unsigned int k = 0; k < roads[i]->Hits().size(); k++){
             printf("Hit (board, BC, strip): (%d,%d,%4.4f)", roads[i]->Hits()[k].MMFE8Index(),roads[i]->Hits()[k].Age(),roads[i]->Hits()[k].Channel());
             cout << endl;
           }
@@ -358,7 +358,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
   Double_t zpos[8] = {0., 11.2, 32.4, 43.6,
                       113.6, 124.8, 146.0, 157.2};
 
-  for (int i = 0; i < hits.size(); i++){
+  for (unsigned int i = 0; i < hits.size(); i++){
     if (hits[i].IsNoise() == false){
       ib.push_back(hits[i].MMFE8Index());
       if (xflag){
@@ -390,7 +390,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
   //define lines for planes
   vector<TGraph*> planes = {};
   
-  for (int k=0; k < NBOARDS; k++){
+  for ( int k=0; k < NBOARDS; k++){
       Double_t board_x[2];
       Double_t board_z[2];      
       if (xflag){
@@ -420,7 +420,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     gr->SetMarkerStyle(34);
     gr->SetMarkerSize(1.4);
     leg->AddEntry(gr,"muon","p");
-    for (int j = 0; j < zpts.size(); j++){
+    for (unsigned int j = 0; j < zpts.size(); j++){
       TLatex *latex = new TLatex(gr->GetX()[j], gr->GetY()[j], Form("%6.f",ch[j]));
       latex->SetTextSize(0.03);
       gr->GetListOfFunctions()->Add(latex);
@@ -431,7 +431,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     grbkg->SetMarkerStyle(20);
     grbkg->SetMarkerSize(1.);
     leg->AddEntry(grbkg, "bkgd.","p");
-    for (int j = 0; j < bkgzpts.size(); j++){
+    for (unsigned int j = 0; j < bkgzpts.size(); j++){
       TLatex *latex = new TLatex(grbkg->GetX()[j], grbkg->GetY()[j], Form("%6.f",bkgch[j]));
       latex->SetTextSize(0.03);
       grbkg->GetListOfFunctions()->Add(latex);
@@ -441,7 +441,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
       mg->Add(gr,"p");
     if (bkgzpts.size()> 0)
       mg->Add(grbkg,"p");
-    for (int k = 0; k < NBOARDS; k++){
+    for ( int k = 0; k < NBOARDS; k++){
       mg->Add(planes[k], "l");
     }
     
@@ -494,16 +494,17 @@ int main(int argc, char* argv[]) {
 
   if ( argc < 3 ){
     cout << "Error at Input: please specify number of events to generate "<< endl;
-    cout << "Example:   ./sim -n 100 -o output.root" << endl;
-    cout << "Example:   ./sim -n 100 -b <bkg rate in kHz/strip> -o output.root" << endl;
-    cout << "Example:   ./sim -n 100 -b <bkg rate in Hz/strip> -p <make event displays> -o output.root" << endl;
+    cout << "Example:   ./sim -n 100 -ch <chamber type> -o output.root" << endl;
+    cout << "Example:   ./sim -n 100 -ch <chamber type> -b <bkg rate in kHz/strip> -o output.root" << endl;
+    cout << "Example:   ./sim -n 100 -ch <chamber type> -b <bkg rate in Hz/strip> -p <make event displays> -o output.root" << endl;
+    cout << "Other options include: -w <bc_wind> -sig <art res (ns)>" << endl;
     return 0;
   }
 
   bool b_out = false;
   bool ch_type = false;
 
-  for (int i=1;i<argc-1;i++){
+  for ( int i=1;i<argc-1;i++){
     if (strncmp(argv[i],"-n",2)==0){
       nevents = atoi(argv[i+1]);
     }
@@ -556,6 +557,8 @@ int main(int argc, char* argv[]) {
   cout << endl;
   cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
+  cout << endl;
+  printf("\r >> art res (in ns): %f", m_sig_art);
   cout << endl;
   cout << "\r >> Using BCID window: " << bc_wind << endl;
   printf("\r >> Background rate of %d Hz per strip",bkgrate);
@@ -618,7 +621,7 @@ int main(int argc, char* argv[]) {
 
   time_t timer = time(NULL);
   time_t curr_time;
-  for (int i = 0; i < nevents; i++){
+  for ( int i = 0; i < nevents; i++){
 
     if (nevents > 1000){
       if (i % ((int)nevents/1000) == 0){
@@ -657,7 +660,7 @@ int main(int argc, char* argv[]) {
     
     double art_time;
   
-    for (int j = 0; j < NBOARDS; j++){
+    for ( int j = 0; j < NBOARDS; j++){
       if (oct_hitmask[j] == 1){
         if (j < 2)
           n_x1++;
@@ -677,7 +680,7 @@ int main(int argc, char* argv[]) {
 
     if (db){
       cout << "N muonhits: " << hits.size() << endl;
-      for (int j = 0; j < hits.size(); j++){
+      for (unsigned int j = 0; j < hits.size(); j++){
         printf("Muon hit (board, BC, strip): (%d,%d,%4.4f)\n", hits[j]->MMFE8Index(),hits[j]->Age(),hits[j]->Channel());
       }
     }
@@ -686,7 +689,7 @@ int main(int argc, char* argv[]) {
       muon_trig_ok= true; 
     }
 
-    for (int j = 0; j < art_bc.size(); j++){
+    for (unsigned int j = 0; j < art_bc.size(); j++){
       if (art_bc[j] == -1)
         continue;
       else if (art_bc[j] < smallest_bc)
@@ -704,7 +707,7 @@ int main(int argc, char* argv[]) {
     }
 
 
-    for (int i = 0; i < all_hits.size(); i++){
+    for (unsigned int i = 0; i < all_hits.size(); i++){
       int ib = all_hits[i]->MMFE8Index();
       if (all_hits[i]->IsNoise() &&
 	  (ib < 2 || ib > 5))
@@ -746,7 +749,7 @@ int main(int argc, char* argv[]) {
     myslope.imuonhits = 0;
 
     vector<int> iroads;
-    for (int k = 0; k < m_slopes.size(); k++){
+    for (unsigned int k = 0; k < m_slopes.size(); k++){
       iroads.push_back(k);
     }
     
@@ -754,7 +757,7 @@ int main(int argc, char* argv[]) {
     std::random_shuffle(iroads.begin(),iroads.end());
 
     // pick road with the most real muon hits
-    for (int k = 0; k < iroads.size(); k++){
+    for (unsigned int k = 0; k < iroads.size(); k++){
       int j = iroads[k];
       if (m_slopes[j].imuonhits > myslope.imuonhits){
         myslope.count = m_slopes[j].count;
@@ -812,6 +815,7 @@ int main(int argc, char* argv[]) {
   ofstream mylog;
   mylog.open("log.txt");
   mylog << "x-road size(in strips): "<< XROAD <<", +/- neighbor roads (uv): "<< UVFACTOR <<"\n";
+  mylog << "art res (in ns): " << m_sig_art << "\n";
   mylog << "Using BCID window: " << bc_wind << "\n";
   //  mylog << "Background rate of " << bkgrate << " Hz per square mm\n";
   mylog << "Background rate of " << bkgrate << " Hz per strip\n";
