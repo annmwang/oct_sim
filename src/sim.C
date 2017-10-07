@@ -43,7 +43,7 @@ bool db = false; // debug output flag
 
 // SOME CONSTANTS
 
-int NBOARDS = 8;
+int NPLANES = 8;
 int NSTRIPS;
 double xlow, xhigh, ylow, yhigh; // chamber dimensions
 double mu_xlow, mu_xhigh, mu_ylow, mu_yhigh; // active chamber area to decouple edge effects
@@ -177,9 +177,9 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
 
   std::tie(thx,thy) = cosmic_angle();
 
-  double avgz = 0.5*(zpos[0]+zpos[NBOARDS-1]);
+  double avgz = 0.5*(zpos[0]+zpos[NPLANES-1]);
   double z, x_b, y_b;
-  for ( int j = 0; j < NBOARDS; j++){
+  for ( int j = 0; j < NPLANES; j++){
     z = zpos[j];
     x_b = TMath::Tan(thx)*(zpos[j]-avgz)+x;
     y_b = TMath::Tan(thy)*(zpos[j]-avgz)+y;
@@ -204,7 +204,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
 //   double expbkg = bkgrate_bc * noise_window  * plane_area;
 
 
-//   for ( int j = 0; j < NBOARDS; j++){
+//   for ( int j = 0; j < NPLANES; j++){
 //     //int nbkg = expbkg;
 //     int nbkg = ran->Poisson(expbkg);
 //     double x, y;
@@ -231,7 +231,7 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   //assume uniform distribution of background - correct for noise
   double bkgrate_bc = bkgrate * (25*pow(10,-9));
   double bkg_prob = bkgrate_bc*noise_window;
-  for ( int j = 0; j < NBOARDS; j++){
+  for ( int j = 0; j < NPLANES; j++){
     //int nbkg = expbkg;
     for ( int k = 0; k < NSTRIPS; k++){
       double prob = ran->Uniform(0,1.);
@@ -249,8 +249,8 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   //gives detector response to muon, returns list of which planes registered hit
   
   int n_mm = 0;
-  vector<int> oct_hitmask(NBOARDS,0);
-  for ( int j=0; j < NBOARDS; j++){
+  vector<int> oct_hitmask(NPLANES,0);
+  for ( int j=0; j < NPLANES; j++){
     if (ran->Uniform(0.,1.) < mm_eff[j]){
       oct_hitmask[j] = 1;
       n_mm++;
@@ -286,6 +286,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
     roads[i]->Reset();
 
     vector<Hit*> hits_now;
+    vector<int> vmm_same;
+    int n_vmm = NSTRIPS/64;
 
     for ( int bc = bc_start; bc < bc_end; bc++){
       //cout << "bunch crossing: " << bc << endl;
@@ -309,7 +311,30 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
             hits_now.push_back(hits[j]);
         }
       }
-
+      
+      // implement vmm ART-like signal
+      for (int ib = 0; ib < NPLANES; ib++){
+        for (int j = 0; j < n_vmm; j++){
+          vmm_same.clear();
+          // save indices of all elements in vmm j
+          for (unsigned int k = 0; k < hits_now.size(); k++){
+            if (hits_now[k]->MMFE8Index() != ib)
+              continue;
+            if (hits_now[k]->VMM() == j){
+              vmm_same.push_back(k);
+            }
+          }
+          // if 2+ hits in same vmm, erase all except 1 randomly
+          if (vmm_same.size() > 1){
+            std::random_shuffle(vmm_same.begin(),vmm_same.end());
+            vmm_same.erase(vmm_same.begin());
+            std::sort(vmm_same.begin(), vmm_same.end());
+            for (int k = vmm_same.size()-1; k > -1; k--){
+              hits_now.erase(hits_now.begin()+vmm_same[k]);
+            }
+          }
+        }
+      }
       roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
 
       if (roads[i]->Coincidence(bc_wind)){
@@ -419,7 +444,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
   //define lines for planes
   vector<TGraph*> planes = {};
   
-  for ( int k=0; k < NBOARDS; k++){
+  for ( int k=0; k < NPLANES; k++){
       Double_t board_x[2];
       Double_t board_z[2];      
       if (xflag){
@@ -470,7 +495,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
       mg->Add(gr,"p");
     if (bkgzpts.size()> 0)
       mg->Add(grbkg,"p");
-    for ( int k = 0; k < NBOARDS; k++){
+    for ( int k = 0; k < NPLANES; k++){
       mg->Add(planes[k], "l");
     }
     
@@ -669,8 +694,8 @@ int main(int argc, char* argv[]) {
     co = 0;
     vector<double> zpos = {-co, 11.2+co, 32.4-co, 43.6+co, 
                            113.6-co, 124.8+co, 146.0-co, 157.2+co};
-    vector<double> xpos(NBOARDS,-1.);
-    vector<double> ypos(NBOARDS,-1.);
+    vector<double> xpos(NPLANES,-1.);
+    vector<double> ypos(NPLANES,-1.);
     
     double xmuon,ymuon;
     std::tie(xmuon,ymuon) = generate_muon(xpos,ypos,zpos);
@@ -682,7 +707,7 @@ int main(int argc, char* argv[]) {
 
     vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
   
-    vector<int> art_bc(NBOARDS, -1.);
+    vector<int> art_bc(NPLANES, -1.);
     double smallest_bc = 999999.;
     
     vector<Hit*> hits;
@@ -694,7 +719,7 @@ int main(int argc, char* argv[]) {
     
     double art_time;
   
-    for ( int j = 0; j < NBOARDS; j++){
+    for ( int j = 0; j < NPLANES; j++){
       if (oct_hitmask[j] == 1){
         if (j < 2)
           n_x1++;
