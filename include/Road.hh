@@ -168,7 +168,7 @@ inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize,
   else if (hit.isU()) iroad = m_iroadu;
   else if (hit.isV()) iroad = m_iroadv;
   else {
-    std::cout << "WARNING: Hit is fucked." << std::endl;
+    std::cout << "WARNING: Hit is weird." << std::endl;
     return false;
   }
 
