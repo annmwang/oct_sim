@@ -29,10 +29,15 @@ def main(argv):
 
     ifile = ROOT.TFile(args.i)
     hists = {}
+    hist_titles = {}
 
     hists["h_mxres"] = ifile.Get("histograms/h_mxres")
     hists["h_xres"] = ifile.Get("histograms/h_xres")
     hists["h_yres"] = ifile.Get("histograms/h_yres")
+
+    hist_titles["h_mxres"] = "#Delta #theta (mrad)"
+    hist_titles["h_xres"] = "#Delta x (mm)"
+    hist_titles["h_yres"] = "#Delta y (mm)"
 
     if args.j:
         jfile = ROOT.TFile(args.j)
@@ -47,105 +52,41 @@ def main(argv):
     if (args.l):
         c.SetLogy()
 
-    show_overflow(hists["h_mxres"])
-    hists["h_mxres"].SetMarkerStyle(8)
-    hists["h_mxres"].SetMarkerSize(1)
-    hists["h_mxres"].SetLineColor(ROOT.kBlue-7)
-    hists["h_mxres"].SetLineWidth(3)
-    hists["h_mxres"].SetTitle("")
-    hists["h_mxres"].GetXaxis().SetTitle("#Delta #theta (mrad)")
-    hists["h_mxres"].GetYaxis().SetTitle("Events")
-    hists["h_mxres"].GetXaxis().SetTitleOffset(1.0)
-    hists["h_mxres"].GetYaxis().SetTitleOffset(1.8)
-    hists["h_mxres"].GetXaxis().SetLabelSize(0.045)
-    hists["h_mxres"].GetXaxis().SetTitleSize(0.045)
-    hists["h_mxres"].GetYaxis().SetLabelSize(0.045)
-    hists["h_mxres"].GetYaxis().SetTitleSize(0.045)
-    hists["h_mxres"].Draw("hist")
+    for hname, hist in hists.iteritems():
+        show_overflow(hist)
+        hist.SetMarkerStyle(8)
+        hist.SetMarkerSize(1)
+        hist.SetLineColor(ROOT.kGreen+3)
+        hist.SetFillColorAlpha(ROOT.kGreen+3,0.4) 
+        hist.SetLineWidth(3)
+        hist.SetTitle("")
+        hist.GetXaxis().SetTitle(hist_titles[hname])
+        hist.GetYaxis().SetTitle("Events")
+        hist.GetXaxis().SetTitleOffset(1.0)
+        hist.GetYaxis().SetTitleOffset(1.8)
+        hist.GetXaxis().SetLabelSize(0.045)
+        hist.GetXaxis().SetTitleSize(0.045)
+        hist.GetYaxis().SetLabelSize(0.045)
+        hist.GetYaxis().SetTitleSize(0.045)
+        hist.Draw("hist")
 
+        l1 = ROOT.TLatex()
+        l1.SetTextSize(0.04)
+        l1.SetTextColor(ROOT.kRed)
+        l1.SetTextAlign(21)
+        l1.SetNDC()
+        if hname is "h_mxres":
+            l1.DrawLatex(0.35,0.8,"RMS = %3.2f mrad"%(hist.GetRMS()));  
+        else:
+            l1.DrawLatex(0.35,0.8,"RMS = %3.2f mm"%(hist.GetRMS()));  
 
-    l1 = ROOT.TLatex()
-    l1.SetTextSize(0.04)
-    l1.SetTextColor(ROOT.kRed)
-    l1.SetTextAlign(21)
-    l1.SetNDC()
-    l1.DrawLatex(0.35,0.8,"RMS = %3.2f mrad"%(hists["h_mxres"].GetRMS()));  
-    if not args.l:
-        c.Print("theta.pdf")
-    else:
-        c.Print("theta_log.pdf")
-    c.Clear()
+        if not args.l:
+            filename = hname + ".pdf"
+        else:
+            filename = hname + "_log.pdf"
+        c.Print(filename)
+        c.Clear()
 
-    hists["h_xres"].SetMarkerStyle(8)
-    hists["h_xres"].SetMarkerSize(1)
-    hists["h_xres"].SetLineColor(ROOT.kBlue-7)
-    hists["h_xres"].SetLineWidth(3)
-    hists["h_xres"].SetTitle("")
-    hists["h_xres"].GetXaxis().SetTitle("#Delta x (mm)")
-    hists["h_xres"].GetYaxis().SetTitle("Events")
-    hists["h_xres"].GetXaxis().SetTitleOffset(1.0)
-    hists["h_xres"].GetYaxis().SetTitleOffset(1.8)
-    hists["h_xres"].GetXaxis().SetLabelSize(0.045)
-    hists["h_xres"].GetXaxis().SetTitleSize(0.045)
-    hists["h_xres"].GetYaxis().SetLabelSize(0.045)
-    hists["h_xres"].GetYaxis().SetTitleSize(0.045)
-    hists["h_xres"].Draw("hist")
-
-    l1 = ROOT.TLatex()
-    l1.SetTextSize(0.04)
-    l1.SetTextColor(ROOT.kRed)
-    l1.SetTextAlign(21)
-    l1.SetNDC()
-    l1.DrawLatex(0.35,0.8,"RMS = %3.2f mm"%(hists["h_xres"].GetRMS()));  
-    if not args.l:
-        c.Print("x.pdf")
-    else:
-        c.Print("x_log.pdf")
-    c.Clear()
-    hists["h_yres"].SetMarkerStyle(8)
-    hists["h_yres"].SetMarkerSize(1)
-    hists["h_yres"].SetLineColor(ROOT.kBlue-7)
-    hists["h_yres"].SetLineWidth(3)
-    hists["h_yres"].SetTitle("")
-    hists["h_yres"].GetXaxis().SetTitle("#Delta y (mm)")
-    if args.j:
-        hists["h_yres"].GetYaxis().SetTitle("A.U.")
-        hists["h_yres"].Scale(1/hists["h_yres"].Integral())
-    else:
-        hists["h_yres"].GetYaxis().SetTitle("Events")
-
-    hists["h_yres"].GetXaxis().SetLabelSize(0.045)
-    hists["h_yres"].GetYaxis().SetLabelSize(0.045)
-    hists["h_yres"].GetXaxis().SetTitleSize(0.045)
-    hists["h_yres"].GetYaxis().SetTitleSize(0.045)
-    hists["h_yres"].GetXaxis().SetTitleOffset(1)
-    hists["h_yres"].GetYaxis().SetTitleOffset(2)
-    hists["h_yres"].Draw("hist")
-
-    if args.j:
-        hists["h2_yres"].SetMarkerStyle(8)
-        hists["h2_yres"].SetMarkerSize(1)
-        hists["h2_yres"].SetLineColor(ROOT.kGreen-7)
-        hists["h2_yres"].SetLineWidth(3)
-        hists["h2_yres"].SetTitle("")
-        hists["h2_yres"].GetXaxis().SetTitleOffset(1.0)
-        hists["h2_yres"].GetYaxis().SetTitleOffset(1.8)
-        hists["h2_yres"].GetXaxis().SetLabelSize(0.045)
-        hists["h2_yres"].GetXaxis().SetTitleSize(0.045)
-        hists["h2_yres"].GetYaxis().SetLabelSize(0.045)
-        hists["h2_yres"].GetYaxis().SetTitleSize(0.045)
-        hists["h2_yres"].Scale(1/hists["h2_yres"].Integral())
-        hists["h2_yres"].Draw("hist same")
-    l1 = ROOT.TLatex()
-    l1.SetTextSize(0.04)
-    l1.SetTextColor(ROOT.kRed)
-    l1.SetTextAlign(21)
-    l1.SetNDC()
-    l1.DrawLatex(0.35,0.8,"RMS = %3.2f mm"%(hists["h_yres"].GetRMS()));  
-    if not args.l:
-        c.Print("y.pdf")
-    else:
-        c.Print("y_log.pdf")
 def show_overflow(hist, show_underflow=True, show_overflow=True):
     """ h/t Josh """
     nbins          = hist.GetNbinsX()
