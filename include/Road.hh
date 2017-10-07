@@ -19,6 +19,7 @@ class Road {
 public:
   Road();
   Road(int iroad, const GeoOctuplet& geometry);
+  Road(const GeoOctuplet* geometry, int iroadx, int iroadu = -1, int iroadv = -1);
   ~Road();
 
   int iRoad();
@@ -27,7 +28,9 @@ public:
   int Offset(int ib);
   bool Contains(const Hit& hit, int roadsize, int uvfactor);
   bool Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor);
+  bool Contains_Neighbors(const Hit& hit, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
   void Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor);
+  void Add_Hits(std::vector<Hit*> & hits, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
   void Increment_Age(int wind);
   bool Coincidence(int wind);
   int NMuon();
@@ -48,6 +51,9 @@ public:
 
 private:
   int m_iroad;
+  int m_iroadx;
+  int m_iroadu;
+  int m_iroadv;
   std::vector<Hit> m_hits;
 
   const GeoOctuplet* m_geometry;
@@ -64,6 +70,20 @@ inline Road::Road(int iroad, const GeoOctuplet& geometry){
   m_iroad = iroad;
   m_geometry = &geometry;
   m_trig = false;
+}
+
+inline Road::Road(const GeoOctuplet* geometry, int iroadx, int iroadu, int iroadv){
+  m_iroad  = iroadx;
+  m_iroadx = iroadx;
+  m_iroadu = (iroadu != -1) ? iroadu : iroadx;
+  m_iroadv = (iroadv != -1) ? iroadv : iroadx;
+  m_geometry = geometry;
+  m_trig = false;
+
+  if (iroadu == -1 && iroadv != -1)
+    std::cout << "WARNING: iroadu = -1 but iroadv aint" << std::endl;
+  if (iroadu != -1 && iroadv == -1)
+    std::cout << "WARNING: iroadv = -1 but iroadu aint" << std::endl;
 }
 
 inline Road::~Road() {}
@@ -139,6 +159,37 @@ inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor)
     return false;
 }
 
+inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize,
+                                     int nstr_up_xx, int nstr_dn_xx,
+                                     int nstr_up_uv, int nstr_dn_uv) {
+
+  int iroad = 0;
+  if      (hit.isX()) iroad = m_iroadx;
+  else if (hit.isU()) iroad = m_iroadu;
+  else if (hit.isV()) iroad = m_iroadv;
+  else {
+    std::cout << "WARNING: Hit is fucked." << std::endl;
+    return false;
+  }
+
+  int slow  = roadsize*(iroad);
+  int shigh = roadsize*(iroad+1);
+
+  if (hit.isX()){
+    slow  -= nstr_dn_xx;
+    shigh += nstr_up_xx;
+  }
+  else {
+    slow  -= nstr_dn_uv;
+    shigh += nstr_up_uv;
+  }
+
+  int strip = hit.Channel();
+  strip += Offset(hit.MMFE8Index());
+
+  return (strip >= slow && strip <= shigh);
+}
+
 inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor){
   for (unsigned int i = 0; i < hits.size(); i++){
     int bo = hits[i]->MMFE8Index();
@@ -159,6 +210,28 @@ inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor)
     }
   }
 }
+
+inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, 
+                           int nstr_up_xx, int nstr_dn_xx, 
+                           int nstr_up_uv, int nstr_dn_uv){
+  for (auto hit_i: hits){
+    int bo = hit_i->MMFE8Index();
+    bool has_hit = false;
+    if (Contains_Neighbors(*hit_i, roadsize, nstr_up_xx, nstr_dn_xx, nstr_up_uv, nstr_dn_uv)){
+      for (auto hit_j: m_hits){
+        if (hit_j.MMFE8Index() == bo){
+          has_hit = true;
+          break;
+        }
+      }
+      if (has_hit)
+        continue;
+      m_hits.push_back(*hit_i);
+      m_hits.back().SetAge(0);
+    }
+  }
+}
+
 void Road::Increment_Age(int wind){
   int nlost = 0;
   std::vector<int> old_ihits;

@@ -50,6 +50,9 @@ double mu_xlow, mu_xhigh, mu_ylow, mu_yhigh; // active chamber area to decouple 
 
 int XROAD, UVFACTOR;
 
+int NSTRIPS_UP_UV, NSTRIPS_DN_UV;
+int NSTRIPS_UP_XX, NSTRIPS_DN_XX;
+
 int bc_wind;
 double sig_art;
 
@@ -118,7 +121,11 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
 
   XROAD = m_xroad;
   UVFACTOR = round((yhigh-ylow)/(B * 0.4 * 2)/XROAD);
-  
+
+  NSTRIPS_UP_UV = 72;
+  NSTRIPS_DN_UV = 72;
+  NSTRIPS_UP_XX = 8;
+  NSTRIPS_DN_XX = 8;
 }
 
 
@@ -132,9 +139,28 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
   int nroad = NSTRIPS/XROAD;
   vector<Road*> m_roads;
   for ( int i = 0; i < nroad; i++){
+
     Road* myroad = nullptr;
-    myroad = new Road(i, geometry);
+    myroad = new Road(&geometry, i);
     m_roads.push_back(myroad);
+
+    int nuv = 0;
+    for (int uv = 1; uv <= nuv; uv++){
+      if (i-uv < 0)
+        continue;
+      Road* myroad_0 = new Road(&geometry, i, i+uv,   i-uv);
+      Road* myroad_1 = new Road(&geometry, i, i-uv,   i+uv);
+      Road* myroad_2 = new Road(&geometry, i, i+uv-1, i-uv);
+      Road* myroad_3 = new Road(&geometry, i, i-uv,   i+uv-1);
+      Road* myroad_4 = new Road(&geometry, i, i-uv+1, i+uv);
+      Road* myroad_5 = new Road(&geometry, i, i+uv,   i-uv+1);
+      m_roads.push_back(myroad_0);
+      m_roads.push_back(myroad_1);
+      m_roads.push_back(myroad_2);
+      m_roads.push_back(myroad_3);
+      m_roads.push_back(myroad_4);
+      m_roads.push_back(myroad_5);
+    }
   }
   return m_roads;
 }
@@ -284,7 +310,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         }
       }
 
-      roads[i]->Add_Hits(hits_now, XROAD, UVFACTOR);
+      roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
 
       if (roads[i]->Coincidence(bc_wind)){
         if (db){
@@ -612,6 +638,10 @@ int main(int argc, char* argv[]) {
   hists_2d["h_nmuvsdx"] = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
   hists["h_dx"] = new TH1F("h_dx", "h_dx", 500, -3500,3500);
 
+  hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
+  hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
+  hists_2d["h_xy_eff"]  = new TH2D("h_xy_eff",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
+
   hists["h_mxres"]->Sumw2();
   hists["h_yres"]->Sumw2();
   hists["h_xres"]->Sumw2();
@@ -619,6 +649,8 @@ int main(int argc, char* argv[]) {
   hists["h_mxres"]->StatOverflows(kTRUE);
   hists["h_yres"]->StatOverflows(kTRUE);
   hists["h_xres"]->StatOverflows(kTRUE);
+
+  vector<Road*> m_roads = create_roads(*GEOMETRY);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -646,6 +678,7 @@ int main(int argc, char* argv[]) {
     if (db){
       printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
     }
+    hists_2d["h_xy_all"]->Fill(xmuon, ymuon);
 
     vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
   
@@ -715,7 +748,8 @@ int main(int argc, char* argv[]) {
 	hists["h_dx"]->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[i]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
     }
 
-    vector<Road*> m_roads = create_roads(*GEOMETRY);
+    for (auto road: m_roads)
+      road->Reset();
     if (db)
       cout << "Number of roads: " << m_roads.size() << endl;
 
@@ -730,7 +764,7 @@ int main(int argc, char* argv[]) {
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
       //      if (db)
-        cout << "no triggered roads?" << endl;
+      cout << "no triggered roads?" << endl;
       continue;
     }
 
@@ -800,6 +834,10 @@ int main(int argc, char* argv[]) {
       extratrig++;
     if (myslope.uvbkg)
       nuv_bkg++;
+
+    if (m_slopes.size() > 0 && muon_trig_ok)
+      hists_2d["h_xy_trig"]->Fill(xmuon, ymuon);
+
   }
   cout << endl;
   cout << endl;
@@ -831,6 +869,9 @@ int main(int argc, char* argv[]) {
   mylog << nevent_allnoise << " events where triggers were only made with bkg hits\n";
 
   mylog.close();
+
+  // FYI: incompatible when batched. this is only for checks.
+  hists_2d["h_xy_eff"]->Divide(hists_2d["h_xy_trig"], hists_2d["h_xy_all"], 1.0, 1.0, "B");
 
   fout->cd();
   fout->mkdir("histograms");
