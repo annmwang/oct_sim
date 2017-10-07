@@ -286,6 +286,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
     roads[i]->Reset();
 
     vector<Hit*> hits_now;
+    vector<int> vmm_same;
+    int n_vmm = NSTRIPS/64;
 
     for ( int bc = bc_start; bc < bc_end; bc++){
       //cout << "bunch crossing: " << bc << endl;
@@ -309,7 +311,30 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
             hits_now.push_back(hits[j]);
         }
       }
-
+      
+      // implement vmm ART-like signal
+      for (int ib = 0; ib < NBOARDS; ib++){
+        for (int j = 0; j < n_vmm; j++){
+          vmm_same.clear();
+          // save indices of all elements in vmm j
+          for (unsigned int k = 0; k < hits_now.size(); k++){
+            if (hits_now[k]->MMFE8Index() != ib)
+              continue;
+            if (hits_now[k]->VMM() == j){
+              vmm_same.push_back(k);
+            }
+          }
+          // if 2+ hits in same vmm, erase all except 1 randomly
+          if (vmm_same.size() > 1){
+            std::random_shuffle(vmm_same.begin(),vmm_same.end());
+            vmm_same.erase(vmm_same.begin());
+            std::sort(vmm_same.begin(), vmm_same.end());
+            for (int k = vmm_same.size()-1; k > -1; k--){
+              hits_now.erase(hits_now.begin()+vmm_same[k]);
+            }
+          }
+        }
+      }
       roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
 
       if (roads[i]->Coincidence(bc_wind)){
