@@ -70,7 +70,7 @@ struct slope_t {
   int count;
   int iroad;
   int imuonhits;
-  bool uvbkg;
+  int uvbkg;
   double mxl;
   double xavg;
   double yavg;
@@ -640,7 +640,14 @@ int main(int argc, char* argv[]) {
   // counters
   int nmuon_trig = 0;
   int nuv_bkg = 0;
+  int nevent_uvbkg = 0;
   int neventtrig = 0;
+
+  int nevent_uvbkg1 = 0;
+  int nevent_uvbkg2 = 0;
+  int nevent_uvbkg3 = 0;
+  int nevent_uvbkg4 = 0;
+
   int extratrig = 0;
   
   int nevent_allnoise = 0;
@@ -662,6 +669,7 @@ int main(int argc, char* argv[]) {
   hists["h_nmu"] = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
   hists_2d["h_nmuvsdx"] = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
   hists["h_dx"] = new TH1F("h_dx", "h_dx", 500, -3500,3500);
+  hists["h_nuv_bkg"] = new TH1F("h_nuv_bkg", "", 5, -0.5, 4.5);
 
   hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
@@ -857,8 +865,21 @@ int main(int argc, char* argv[]) {
       neventtrig++;
     else
       extratrig++;
-    if (myslope.uvbkg)
-      nuv_bkg++;
+
+    hists["h_nuv_bkg"]->Fill(myslope.uvbkg);
+
+    if (myslope.uvbkg > 0){
+      nevent_uvbkg++;
+      nuv_bkg += myslope.uvbkg;
+      if (myslope.uvbkg == 1)
+        nevent_uvbkg1++;
+      else if (myslope.uvbkg== 2)
+        nevent_uvbkg2++;
+      else if (myslope.uvbkg== 3)
+        nevent_uvbkg3++;
+      else if (myslope.uvbkg== 4)
+        nevent_uvbkg4++;
+    }
 
     if (m_slopes.size() > 0 && muon_trig_ok)
       hists_2d["h_xy_trig"]->Fill(xmuon, ymuon);
@@ -868,10 +889,13 @@ int main(int argc, char* argv[]) {
   cout << endl;
   cout << blue << "SIMULATION SUMMARY:" << ending << endl;
   cout << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger"<< endl;
-  cout << nuv_bkg << " triggers with spoiled uv hits"<< endl;
+  cout << nevent_uvbkg << " triggers with spoiled uv hits"<< endl;
+  cout << "n=1: " << nevent_uvbkg1 << " | n=2: "<< nevent_uvbkg2 << " | n=3: "<< nevent_uvbkg3 <<" | n=4: "<< nevent_uvbkg4 << endl;
+  cout << nuv_bkg << " bkg uv hits total"<< endl;
   cout << extratrig << " extra trigger events " << endl;
   cout << nevent_allnoise << " events where triggers were only made with bkg hits" << endl;
   cout << endl;
+
   setstyle();
 
 
@@ -890,6 +914,9 @@ int main(int argc, char* argv[]) {
   mylog << "\n";
   mylog << "SIMULATION SUMMARY:\n";
   mylog << neventtrig << " muons triggered out of " << nmuon_trig << " muons that should trigger\n";
+  mylog << nevent_uvbkg << " triggers with spoiled uv hits\n";
+  mylog << "n=1: " << nevent_uvbkg1 << " | n=2: "<< nevent_uvbkg2 << " | n=3: "<< nevent_uvbkg3 <<" | n=4: "<< nevent_uvbkg4 << "\n";
+  mylog << nuv_bkg << " bkg uv hits total\n";
   mylog << extratrig << " extra trigger events\n";
   mylog << nevent_allnoise << " events where triggers were only made with bkg hits\n";
 
