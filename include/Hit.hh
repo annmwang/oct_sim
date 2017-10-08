@@ -22,7 +22,7 @@ public:
 
   int MMFE8Index() const;
   double Channel() const;
-  double VMM() const;
+  int VMM() const;
   int Age();
   int isX() const;
   int isU() const;
@@ -98,7 +98,7 @@ inline double Hit::Channel() const{
   return m_strip;
 }
 
-inline double Hit::VMM() const{
+inline int Hit::VMM() const{
   return m_vmm;
 }
 
