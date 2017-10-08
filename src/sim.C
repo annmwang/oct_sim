@@ -40,6 +40,7 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 
 bool db = false; // debug output flag
+bool uvr = true; // turn on/off uv roads, numbers only make sense for xroad = 8 right now (i think)
 
 // SOME CONSTANTS
 
@@ -132,14 +133,19 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
   XROAD = m_xroad;
   UVFACTOR = round((yhigh-ylow)/(B * 0.4 * 2)/XROAD);
 
-  NSTRIPS_UP_UV = 72;
-  NSTRIPS_DN_UV = 72;
-  NSTRIPS_UP_XX = 8;
-  NSTRIPS_DN_XX = 8;
-  // NSTRIPS_UP_UV = 4;
-  // NSTRIPS_DN_UV = 0;
-  // NSTRIPS_UP_XX = 4;
-  // NSTRIPS_DN_XX = 0;
+  if (!uvr){
+    // this is for 8 strip x-roads, i think
+    NSTRIPS_UP_UV = 72;
+    NSTRIPS_DN_UV = 72;
+    NSTRIPS_UP_XX = 8;
+    NSTRIPS_DN_XX = 8;
+  }
+  else{
+    NSTRIPS_UP_UV = 4;
+    NSTRIPS_DN_UV = 0;
+    NSTRIPS_UP_XX = 4;
+    NSTRIPS_DN_XX = 0;
+  }
 }
 
 
@@ -157,9 +163,10 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
     Road* myroad = nullptr;
     myroad = new Road(&geometry, i);
     m_roads.push_back(myroad);
-
-    // int nuv = 9;
+    
     int nuv = 0;
+    if (uvr)
+      nuv = UVFACTOR;
     for (int uv = 1; uv <= nuv; uv++){
       if (i-uv < 0)
         continue;
@@ -321,30 +328,30 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
     // turn this off until we dive into emulating the ADDC
     // std::sort(hits_now.begin(), hits_now.end(), compare_channel);
 
-    // implement vmm ART-like signal
-    // turn this off until it is less slow
-    // for (int ib = 0; ib < NPLANES; ib++){
-    //   for (int j = 0; j < n_vmm; j++){
-    //     vmm_same.clear();
-    //     // save indices of all elements in vmm j
-    //     for (unsigned int k = 0; k < hits_now.size(); k++){
-    //       if (hits_now[k]->MMFE8Index() != ib)
-    //         continue;
-    //       if (hits_now[k]->VMM() == j){
-    //         vmm_same.push_back(k);
-    //       }
-    //     }
-    //     // if 2+ hits in same vmm, erase all except 1 randomly
-    //     if (vmm_same.size() > 1){
-    //       std::random_shuffle(vmm_same.begin(),vmm_same.end());
-    //       vmm_same.erase(vmm_same.begin());
-    //       std::sort(vmm_same.begin(), vmm_same.end());
-    //       for (int k = vmm_same.size()-1; k > -1; k--){
-    //         hits_now.erase(hits_now.begin()+vmm_same[k]);
-    //       }
-    //     }
-    //   }
-    // }
+    //implement vmm ART-like signal
+    //turn this off until it is less slow
+    for (int ib = 0; ib < NPLANES; ib++){
+      for (int j = 0; j < n_vmm; j++){
+        vmm_same.clear();
+        // save indices of all elements in vmm j
+        for (unsigned int k = 0; k < hits_now.size(); k++){
+          if (hits_now[k]->MMFE8Index() != ib)
+            continue;
+          if (hits_now[k]->VMM() == j){
+            vmm_same.push_back(k);
+          }
+        }
+        // if 2+ hits in same vmm, erase all except 1 randomly
+        if (vmm_same.size() > 1){
+          std::random_shuffle(vmm_same.begin(),vmm_same.end());
+          vmm_same.erase(vmm_same.begin());
+          std::sort(vmm_same.begin(), vmm_same.end());
+          for (int k = vmm_same.size()-1; k > -1; k--){
+            hits_now.erase(hits_now.begin()+vmm_same[k]);
+          }
+        }
+      }
+    }
 
     for (unsigned int i = 0; i < roads.size(); i++){
 
