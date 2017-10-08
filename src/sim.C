@@ -77,6 +77,16 @@ struct slope_t {
   vector<Hit> slopehits;
 };
 
+bool compare_age(Hit* a, Hit* b){
+  return (a->Age() < b->Age());
+}
+bool compare_channel(Hit* a, Hit* b){
+  return (a->Channel() < b->Channel());
+}
+bool compare_slope(slope_t a, slope_t b){
+  return (a.iroad < b.iroad);
+}
+
 void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
   // function to set parameters in a smart way
 
@@ -126,6 +136,10 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
   NSTRIPS_DN_UV = 72;
   NSTRIPS_UP_XX = 8;
   NSTRIPS_DN_XX = 8;
+  // NSTRIPS_UP_UV = 4;
+  // NSTRIPS_DN_UV = 0;
+  // NSTRIPS_UP_XX = 4;
+  // NSTRIPS_DN_XX = 0;
 }
 
 
@@ -144,6 +158,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
     myroad = new Road(&geometry, i);
     m_roads.push_back(myroad);
 
+    // int nuv = 9;
     int nuv = 0;
     for (int uv = 1; uv <= nuv; uv++){
       if (i-uv < 0)
@@ -259,7 +274,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   return oct_hitmask;
 }
 
-tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits){
+tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits, int evt){
 
   // applies the MMTP finder to a series of hits and roads
   // returns slope structs for roads which found a coincidence and have at least 1 real muon hit
@@ -267,74 +282,73 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
   int ntrigs = 0;
   int bc_start = 999999;
   int bc_end = -1;
+  unsigned int ibc = 0;
 
-  vector<slope_t> slopes;
+  vector<slope_t> slopes = {};
 
-  for (unsigned int i=0; i < hits.size(); i++){
-    if (hits[i]->Age() < bc_start)
-      bc_start = hits[i]->Age();
-    if (hits[i]->Age() > bc_end)
-      bc_end = hits[i]->Age();
-  }
+  if (hits.size() == 0)
+    return make_tuple(ntrigs, slopes);
+
+  std::sort(hits.begin(), hits.end(), compare_age);
+  bc_start = hits.front()->Age();
+  bc_end   = hits.back()->Age();
   bc_start = bc_start - bc_wind*2;
-  bc_end = bc_end + bc_wind*2;
+  bc_end   = bc_end   + bc_wind*2;
 
-
-  // each road makes independent triggers
-  for (unsigned int i = 0; i < roads.size(); i++){
-
+  // setup the roads
+  for (unsigned int i = 0; i < roads.size(); i++)
     roads[i]->Reset();
+  vector<Hit*> hits_now = {};
+  vector<int> vmm_same  = {};
+  int n_vmm = NSTRIPS/64;
 
-    vector<Hit*> hits_now;
-    vector<int> vmm_same;
-    int n_vmm = NSTRIPS/64;
+  // each road makes independent triggers, evaluated on each BC
+  for (int bc = bc_start; bc < bc_end; bc++){
 
-    for ( int bc = bc_start; bc < bc_end; bc++){
-      //cout << "bunch crossing: " << bc << endl;
-      hits_now.clear();
+    hits_now.clear();
+
+    for (unsigned int j = ibc; j < hits.size(); j++){
+      if (hits[j]->Age() == bc){
+        hits_now.push_back(hits[j]);
+      }
+      else if (hits[j]->Age() > bc){
+        ibc = j;
+        break;
+      }
+    }
+
+    // implement ADDC-like handling
+    // turn this off until we dive into emulating the ADDC
+    // std::sort(hits_now.begin(), hits_now.end(), compare_channel);
+
+    // implement vmm ART-like signal
+    // turn this off until it is less slow
+    // for (int ib = 0; ib < NPLANES; ib++){
+    //   for (int j = 0; j < n_vmm; j++){
+    //     vmm_same.clear();
+    //     // save indices of all elements in vmm j
+    //     for (unsigned int k = 0; k < hits_now.size(); k++){
+    //       if (hits_now[k]->MMFE8Index() != ib)
+    //         continue;
+    //       if (hits_now[k]->VMM() == j){
+    //         vmm_same.push_back(k);
+    //       }
+    //     }
+    //     // if 2+ hits in same vmm, erase all except 1 randomly
+    //     if (vmm_same.size() > 1){
+    //       std::random_shuffle(vmm_same.begin(),vmm_same.end());
+    //       vmm_same.erase(vmm_same.begin());
+    //       std::sort(vmm_same.begin(), vmm_same.end());
+    //       for (int k = vmm_same.size()-1; k > -1; k--){
+    //         hits_now.erase(hits_now.begin()+vmm_same[k]);
+    //       }
+    //     }
+    //   }
+    // }
+
+    for (unsigned int i = 0; i < roads.size(); i++){
 
       roads[i]->Increment_Age(bc_wind);
-
-      for (unsigned int j = 0; j < hits.size(); j++){
-        // BC window
-        if (hits[j]->Age() == bc){
-          // add into hits_now so that it is sorted by strip number
-          bool added_hit = false;
-          for (unsigned int k = 0; k < hits_now.size(); k++){
-            if (hits_now[k]->Channel() > hits[j]->Channel()){
-              hits_now.insert(hits_now.begin()+k,hits[j]);
-              added_hit = true;
-              break;
-            }
-          }
-          if (!added_hit)
-            hits_now.push_back(hits[j]);
-        }
-      }
-      
-      // implement vmm ART-like signal
-      for (int ib = 0; ib < NPLANES; ib++){
-        for (int j = 0; j < n_vmm; j++){
-          vmm_same.clear();
-          // save indices of all elements in vmm j
-          for (unsigned int k = 0; k < hits_now.size(); k++){
-            if (hits_now[k]->MMFE8Index() != ib)
-              continue;
-            if (hits_now[k]->VMM() == j){
-              vmm_same.push_back(k);
-            }
-          }
-          // if 2+ hits in same vmm, erase all except 1 randomly
-          if (vmm_same.size() > 1){
-            std::random_shuffle(vmm_same.begin(),vmm_same.end());
-            vmm_same.erase(vmm_same.begin());
-            std::sort(vmm_same.begin(), vmm_same.end());
-            for (int k = vmm_same.size()-1; k > -1; k--){
-              hits_now.erase(hits_now.begin()+vmm_same[k]);
-            }
-          }
-        }
-      }
       roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
 
       if (roads[i]->Coincidence(bc_wind)){
@@ -360,7 +374,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         m_slope.count = roads[i]->Count();
         m_slope.iroad = roads[i]->iRoad();
         m_slope.imuonhits = nmuonhits;
-	m_slope.uvbkg = roads[i]->UV_bkg();
+        m_slope.uvbkg = roads[i]->UV_bkg();
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
         m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
@@ -774,11 +788,11 @@ int main(int argc, char* argv[]) {
     }
 
 
-    for (unsigned int i = 0; i < all_hits.size(); i++){
-      int ib = all_hits[i]->MMFE8Index();
-      if (all_hits[i]->IsNoise() &&
+    for (unsigned int ihit = 0; ihit < all_hits.size(); ihit++){
+      int ib = all_hits[ihit]->MMFE8Index();
+      if (all_hits[ihit]->IsNoise() &&
 	  (ib < 2 || ib > 5))
-	hists["h_dx"]->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[i]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
+	hists["h_dx"]->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[ihit]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
     }
 
     for (auto road: m_roads)
@@ -792,7 +806,7 @@ int main(int argc, char* argv[]) {
 
     vector<slope_t> m_slopes;
     int ntrigroads;
-    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag);
+    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, i);
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
@@ -820,7 +834,7 @@ int main(int argc, char* argv[]) {
     for (unsigned int k = 0; k < m_slopes.size(); k++){
       iroads.push_back(k);
     }
-    
+
     // shuffle roads so we don't have a bias from iterating through roads by index
     std::random_shuffle(iroads.begin(),iroads.end());
 
@@ -830,7 +844,7 @@ int main(int argc, char* argv[]) {
       if (m_slopes[j].imuonhits > myslope.imuonhits){
         myslope.count = m_slopes[j].count;
         myslope.mxl = m_slopes[j].mxl;
-	myslope.uvbkg = m_slopes[j].uvbkg;
+        myslope.uvbkg = m_slopes[j].uvbkg;
         myslope.xavg = m_slopes[j].xavg;
         myslope.yavg = m_slopes[j].yavg;
         myslope.imuonhits = m_slopes[j].imuonhits;
