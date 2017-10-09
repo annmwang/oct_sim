@@ -347,12 +347,10 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         }
         // if 2+ hits in same vmm, erase all except 1 randomly
         if (vmm_same.size() > 1){
-          std::random_shuffle(vmm_same.begin(),vmm_same.end());
-          vmm_same.erase(vmm_same.begin());
-          std::sort(vmm_same.begin(), vmm_same.end());
-          for (int k = vmm_same.size()-1; k > -1; k--){
-            hits_now.erase(hits_now.begin()+vmm_same[k]);
-          }
+          int the_chosen_one = ran->Integer((int)(vmm_same.size()));
+          for (int k = vmm_same.size()-1; k > -1; k--)
+            if (k != the_chosen_one)
+              hits_now.erase(hits_now.begin()+vmm_same[k]);
         }
       }
     }
@@ -841,28 +839,28 @@ int main(int argc, char* argv[]) {
     myslope.yavg = 0.;
     myslope.imuonhits = 0;
 
-    vector<int> iroads;
-    for (unsigned int k = 0; k < m_slopes.size(); k++){
-      iroads.push_back(k);
-    }
-
-    // shuffle roads so we don't have a bias from iterating through roads by index
-    std::random_shuffle(iroads.begin(),iroads.end());
-
     // pick road with the most real muon hits
-    for (unsigned int k = 0; k < iroads.size(); k++){
-      int j = iroads[k];
-      if (m_slopes[j].imuonhits > myslope.imuonhits){
-        myslope.count = m_slopes[j].count;
-        myslope.mxl = m_slopes[j].mxl;
-        myslope.uvbkg = m_slopes[j].uvbkg;
-        myslope.xavg = m_slopes[j].xavg;
-        myslope.yavg = m_slopes[j].yavg;
-        myslope.imuonhits = m_slopes[j].imuonhits;
-        if (pltflag)
-          myslope.slopehits = m_slopes[j].slopehits;
-      }
+    int most_hits = 0;
+    vector<int> iroads = {};
+    for (unsigned int k = 0; k < m_slopes.size(); k++){
+      if (m_slopes[k].imuonhits < most_hits)
+        continue;
+      if (m_slopes[k].imuonhits > most_hits)
+        iroads.clear();
+      iroads.push_back(k);
+      most_hits = m_slopes[k].imuonhits;
     }
+    int the_chosen_one = iroads[ran->Integer((int)(iroads.size()))];
+    myslope.count       = m_slopes[the_chosen_one].count;
+    myslope.mxl         = m_slopes[the_chosen_one].mxl;
+    myslope.uvbkg       = m_slopes[the_chosen_one].uvbkg;
+    myslope.xavg        = m_slopes[the_chosen_one].xavg;
+    myslope.yavg        = m_slopes[the_chosen_one].yavg;
+    myslope.iroad       = m_slopes[the_chosen_one].iroad;
+    myslope.imuonhits   = m_slopes[the_chosen_one].imuonhits;
+    if (pltflag)
+      myslope.slopehits = m_slopes[the_chosen_one].slopehits;
+
 
     if (i < 10 && pltflag){
       TString test = Form("event_disp_%d",i);
