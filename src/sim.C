@@ -40,7 +40,7 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 
 bool db = false; // debug output flag
-bool uvr = true; // turn on/off uv roads, numbers only make sense for xroad = 8 right now (i think)
+bool uvr = false; // turn on/off uv roads, numbers only make sense for xroad = 8 right now (i think)
 
 // SOME CONSTANTS
 
@@ -135,10 +135,14 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
 
   if (!uvr){
     // this is for 8 strip x-roads, i think
-    NSTRIPS_UP_UV = 72;
-    NSTRIPS_DN_UV = 72;
-    NSTRIPS_UP_XX = 8;
-    NSTRIPS_DN_XX = 8;
+    NSTRIPS_UP_UV = UVFACTOR*XROAD+NSTRIPS_UP_XX;
+    NSTRIPS_DN_UV = UVFACTOR*XROAD;
+    NSTRIPS_UP_XX = 4;
+    NSTRIPS_DN_XX = 0;
+    // NSTRIPS_UP_UV = 80;
+    // NSTRIPS_DN_UV = 80;
+    // NSTRIPS_UP_XX = 8;
+    // NSTRIPS_DN_XX = 8;
   }
   else{
     NSTRIPS_UP_UV = 4;
