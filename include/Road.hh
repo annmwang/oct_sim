@@ -46,6 +46,9 @@ public:
   double AvgZofX();
   double AvgZofU();
   double AvgZofV();
+  double AvgYfromUV();
+  double AvgYfromUV_BestPair();
+  double YfromUV(Hit uhit, Hit vhit);
   std::vector<Hit> Hits();
 
 
@@ -428,6 +431,48 @@ double Road::AvgZofV(){
   }
   double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
   return avg_z;
+}
+
+double Road::AvgYfromUV(){
+  double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+  return -B*( AvgXofU() - AvgXofV() + (AvgZofV()-AvgZofU())*Mxl() ) / 2;
+}
+
+double Road::YfromUV(Hit uhit, Hit vhit){
+  double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+  double xpos_u, xpos_v, zpos_u, zpos_v;
+  xpos_u = Xpos(uhit.Channel(), uhit.MMFE8Index());
+  xpos_v = Xpos(vhit.Channel(), vhit.MMFE8Index());
+  zpos_u = m_geometry->Get(uhit.MMFE8Index()).Origin().Z();
+  zpos_v = m_geometry->Get(vhit.MMFE8Index()).Origin().Z();
+  return -B*( xpos_u - xpos_v + (zpos_v-zpos_u)*Mxl() ) / 2;
+}
+
+double Road::AvgYfromUV_BestPair(){
+
+  double xpos_u, xpos_v, xpos_uv, diff, best_diff, best_y;
+  best_diff = 99999.9;
+  best_y = 0.0;
+
+  for (auto uhit: m_hits){
+    if (! uhit.isU())
+      continue;
+    for (auto vhit: m_hits){
+      if (! vhit.isV())
+        continue;
+
+      xpos_u = Xpos(uhit.Channel(), uhit.MMFE8Index());
+      xpos_v = Xpos(vhit.Channel(), vhit.MMFE8Index());
+      xpos_uv = (xpos_u + xpos_v) / 2.0;
+      diff = std::fabs(xpos_uv - AvgXofX());
+
+      if (diff < best_diff){
+        best_diff = diff;
+        best_y    = YfromUV(uhit, vhit);
+      }
+    }
+  }
+  return best_y;
 }
 
 std::vector<Hit> Road::Hits(){
