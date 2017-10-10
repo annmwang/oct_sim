@@ -37,6 +37,8 @@ public:
   bool Horiz_ok();
   bool Stereo_ok();
   int UV_bkg();
+  int NX();
+  int NUV();
   bool Mature(int wind);
   double Mxl();
   double Xpos(double ch, int ib);
@@ -302,6 +304,24 @@ int Road::UV_bkg(){
         nuv_bkg++;
   }
   return nuv_bkg;
+}
+
+int Road::NX(){
+  int n = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++)
+    if (m_hits[i].MMFE8Index() == 0 || m_hits[i].MMFE8Index() == 1 ||
+        m_hits[i].MMFE8Index() == 6 || m_hits[i].MMFE8Index() == 7)
+      n++;
+  return n;
+}
+
+int Road::NUV(){
+  int n = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++)
+    if (m_hits[i].MMFE8Index() == 2 || m_hits[i].MMFE8Index() == 4 ||
+        m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
+      n++;
+  return n;
 }
 
 bool Road::Mature(int wind){

@@ -40,7 +40,6 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 
 bool db = false; // debug output flag
-bool uvr = false; // turn on/off uv roads, numbers only make sense for xroad = 8 right now (i think)
 
 // SOME CONSTANTS
 
@@ -58,7 +57,6 @@ int bc_wind;
 double sig_art;
 
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
-double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
 // colors
 string pink = "\033[38;5;205m";
@@ -88,7 +86,7 @@ bool compare_slope(slope_t a, slope_t b){
   return (a.iroad < b.iroad);
 }
 
-void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
+void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uvrflag){
   // function to set parameters in a smart way
 
   if (chamber == "small"){
@@ -133,7 +131,7 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
   XROAD = m_xroad;
   UVFACTOR = round((yhigh-ylow)/(B * 0.4 * 2)/XROAD);
 
-  if (!uvr){
+  if (!uvrflag){
     // this is for 8 strip x-roads, i think
     NSTRIPS_UP_UV = UVFACTOR*XROAD+NSTRIPS_UP_XX;
     NSTRIPS_DN_UV = UVFACTOR*XROAD;
@@ -157,7 +155,7 @@ tuple<double,double> cosmic_angle(){
   return make_tuple(0.,0.);
 }
 
-vector<Road*> create_roads(const GeoOctuplet& geometry){
+vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
@@ -169,7 +167,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
     m_roads.push_back(myroad);
     
     int nuv = 0;
-    if (uvr)
+    if (uvrflag)
       nuv = UVFACTOR;
     for (int uv = 1; uv <= nuv; uv++){
       if (i-uv < 0)
@@ -271,7 +269,7 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   return bkghits;
 }
 
-vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
+vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff){
   //gives detector response to muon, returns list of which planes registered hit
   
   int n_mm = 0;
@@ -562,9 +560,12 @@ int main(int argc, char* argv[]) {
   int m_xroad = 8;
   int m_bcwind = 8;
   double m_sig_art = 32.;
+  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
+  double chamber_eff = -1;
 
   bool bkgflag = false;
   bool pltflag = false;
+  bool uvrflag = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -581,7 +582,7 @@ int main(int argc, char* argv[]) {
   bool b_out = false;
   bool ch_type = false;
 
-  for ( int i=1;i<argc-1;i++){
+  for (int i=1; i<argc; i++){
     if (strncmp(argv[i],"-n",2)==0){
       nevents = atoi(argv[i+1]);
     }
@@ -609,6 +610,14 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-p",2)==0){
       pltflag = true;
     }
+    if (strncmp(argv[i],"-uvr",4)==0){
+      uvrflag = true;
+    }
+    if (strncmp(argv[i],"-e",2)==0){
+      chamber_eff = atof(argv[i+1]);
+      for (unsigned int i = 0; i < mm_eff.size(); i++)
+        mm_eff[i] = chamber_eff;
+    }
   }
   if (!b_out){
     cout << "Error at Input: please specify output file (-o flag)" << endl;
@@ -625,7 +634,7 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad);
+  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad, uvrflag);
   
   cout << endl;
   cout << blue << "--------------" << ending << endl;
@@ -642,6 +651,13 @@ int main(int argc, char* argv[]) {
 //   printf("\r >> Background rate of %d Hz per square mm",bkgrate);
   cout << endl;
   printf("\r >> Assuming chamber size: (%4.1f,%4.1f) in mm",xhigh-xlow, yhigh-ylow);
+  cout << endl;
+  printf("\r >> Using UV roads: %s", (uvrflag) ? "true" : "false");
+  cout << endl;
+  for (unsigned int i = 0; i < mm_eff.size(); i++){
+    printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
+    cout << endl;
+  }
   cout << endl;
   cout << endl;
     
@@ -685,7 +701,7 @@ int main(int argc, char* argv[]) {
   
   //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
   hists["h_mxres"] = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
-  hists["h_yres"] = new TH1F("h_yres", "#DeltaY", 140, -3500, 3500);
+  hists["h_yres"] = new TH1F("h_yres", "#DeltaY", 700, -3500, 3500);
   //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
   hists["h_xres"] = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
 
@@ -706,7 +722,7 @@ int main(int argc, char* argv[]) {
   hists["h_yres"]->StatOverflows(kTRUE);
   hists["h_xres"]->StatOverflows(kTRUE);
 
-  vector<Road*> m_roads = create_roads(*GEOMETRY);
+  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -736,7 +752,7 @@ int main(int argc, char* argv[]) {
     }
     hists_2d["h_xy_all"]->Fill(xmuon, ymuon);
 
-    vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
+    vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
   
     vector<int> art_bc(NPLANES, -1.);
     double smallest_bc = 999999.;
