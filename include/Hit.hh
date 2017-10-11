@@ -24,6 +24,7 @@ public:
   double Channel() const;
   int VMM() const;
   int Age();
+  int BC();
   int isX() const;
   int isU() const;
   int isV() const;
@@ -39,6 +40,7 @@ public:
 private:
   int m_MMFE8index;
   int m_Age;
+  int m_BC;
   double m_x_pos;
   double m_y_pos;
   double m_x_pos_at_end;
@@ -63,6 +65,7 @@ inline Hit::Hit(){
 
 inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const GeoOctuplet& geometry){
   m_MMFE8index = ib;
+  m_BC = age;
   m_Age = age;
   m_x_pos = xpos;
   m_y_pos = ypos;
@@ -76,6 +79,7 @@ inline Hit::Hit(int ib, int age, double xpos, double ypos, bool is_noise, const 
 
 inline Hit::Hit(int ib, int age, double strip, bool is_noise, const GeoOctuplet& geometry){
   m_MMFE8index = ib;
+  m_BC = age;
   m_Age = age;
   m_y_pos = -1.;
   m_x_pos = -1.;
@@ -104,6 +108,10 @@ inline int Hit::VMM() const{
 
 inline int Hit::Age() {
   return m_Age;
+}
+
+inline int Hit::BC() {
+  return m_BC;
 }
 
 inline int Hit::isX() const {

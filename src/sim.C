@@ -40,7 +40,6 @@ TRandom3 *ran = new TRandom3(time(NULL));
 
 
 bool db = false; // debug output flag
-bool uvr = false; // turn on/off uv roads, numbers only make sense for xroad = 8 right now (i think)
 
 // SOME CONSTANTS
 
@@ -58,8 +57,6 @@ int bc_wind;
 double sig_art;
 
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
-double mm_eff[8] = {1.,1.,1.,1.,1.,1.,1.,1.}; // i apologize for this array
-//double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
 // colors
 string pink = "\033[38;5;205m";
@@ -91,7 +88,7 @@ bool compare_slope(slope_t a, slope_t b){
   return (a.iroad < b.iroad);
 }
 
-void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
+void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uvrflag){
   // function to set parameters in a smart way
 
   if (chamber == "small"){
@@ -136,7 +133,7 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad){
   XROAD = m_xroad;
   UVFACTOR = round((yhigh-ylow)/(B * 0.4 * 2)/XROAD);
 
-  if (!uvr){
+  if (!uvrflag){
     // this is for 8 strip x-roads, i think
     NSTRIPS_UP_UV = UVFACTOR*XROAD+NSTRIPS_UP_XX;
     NSTRIPS_DN_UV = UVFACTOR*XROAD;
@@ -160,7 +157,7 @@ tuple<double,double> cosmic_angle(){
   return make_tuple(0.,0.);
 }
 
-vector<Road*> create_roads(const GeoOctuplet& geometry){
+vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
@@ -172,7 +169,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry){
     m_roads.push_back(myroad);
     
     int nuv = 0;
-    if (uvr)
+    if (uvrflag)
       nuv = UVFACTOR;
     for (int uv = 1; uv <= nuv; uv++){
       if (i-uv < 0)
@@ -274,7 +271,7 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   return bkghits;
 }
 
-vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
+vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff){
   //gives detector response to muon, returns list of which planes registered hit
   
   int n_mm = 0;
@@ -350,12 +347,10 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         }
         // if 2+ hits in same vmm, erase all except 1 randomly
         if (vmm_same.size() > 1){
-          std::random_shuffle(vmm_same.begin(),vmm_same.end());
-          vmm_same.erase(vmm_same.begin());
-          std::sort(vmm_same.begin(), vmm_same.end());
-          for (int k = vmm_same.size()-1; k > -1; k--){
-            hits_now.erase(hits_now.begin()+vmm_same[k]);
-          }
+          int the_chosen_one = ran->Integer((int)(vmm_same.size()));
+          for (int k = vmm_same.size()-1; k > -1; k--)
+            if (k != the_chosen_one)
+              hits_now.erase(hits_now.begin()+vmm_same[k]);
         }
       }
     }
@@ -573,9 +568,12 @@ int main(int argc, char* argv[]) {
   int m_xroad = 8;
   int m_bcwind = 8;
   double m_sig_art = 32.;
+  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
+  double chamber_eff = -1;
 
   bool bkgflag = false;
   bool pltflag = false;
+  bool uvrflag = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -592,7 +590,7 @@ int main(int argc, char* argv[]) {
   bool b_out = false;
   bool ch_type = false;
 
-  for ( int i=1;i<argc-1;i++){
+  for (int i=1; i<argc; i++){
     if (strncmp(argv[i],"-n",2)==0){
       nevents = atoi(argv[i+1]);
     }
@@ -620,6 +618,14 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-p",2)==0){
       pltflag = true;
     }
+    if (strncmp(argv[i],"-uvr",4)==0){
+      uvrflag = true;
+    }
+    if (strncmp(argv[i],"-e",2)==0){
+      chamber_eff = atof(argv[i+1]);
+      for (unsigned int i = 0; i < mm_eff.size(); i++)
+        mm_eff[i] = chamber_eff;
+    }
   }
   if (!b_out){
     cout << "Error at Input: please specify output file (-o flag)" << endl;
@@ -636,7 +642,7 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad);
+  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad, uvrflag);
   
   cout << endl;
   cout << blue << "--------------" << ending << endl;
@@ -655,6 +661,13 @@ int main(int argc, char* argv[]) {
 //   printf("\r >> Background rate of %d Hz per square mm",bkgrate);
   cout << endl;
   printf("\r >> Assuming chamber size: (%4.1f,%4.1f) in mm",xhigh-xlow, yhigh-ylow);
+  cout << endl;
+  printf("\r >> Using UV roads: %s", (uvrflag) ? "true" : "false");
+  cout << endl;
+  for (unsigned int i = 0; i < mm_eff.size(); i++){
+    printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
+    cout << endl;
+  }
   cout << endl;
   cout << endl;
     
@@ -698,7 +711,7 @@ int main(int argc, char* argv[]) {
   
   //TH1F * h_mxres = new TH1F("h_mxres", "#Delta#Theta", 30, -1.5, 1.5);
   hists["h_mxres"] = new TH1F("h_mxres", "#Delta#Theta", 201, -100.5, 100.5);
-  hists["h_yres"] = new TH1F("h_yres", "#DeltaY", 140, -3500, 3500);
+  hists["h_yres"] = new TH1F("h_yres", "#DeltaY", 700, -3500, 3500);
   //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
   hists["h_xres"] = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
 
@@ -709,7 +722,6 @@ int main(int argc, char* argv[]) {
   hists["h_nx_bkg"] = new TH1F("h_nx_bkg", "", 5, -0.5, 4.5);
   hists_2d["h_xres_nxbkg"] = new TH2D("h_xres_nxbkg", "h_xres_nxbkg", 5, -0.5, 4.5 , 122, -30.5, 30.5);
   hists_2d["h_xres_nxmuon"] = new TH2D("h_xres_nxmuon", "h_xres_nxmuon", 5, -0.5, 4.5 , 122, -30.5, 30.5);
-  hists_2d["h_xres_nxmaxmuon"] = new TH2D("h_xres_nxmaxmuon", "h_xres_nxmaxmuon", 5, -0.5, 4.5 , 122, -30.5, 30.5);
 
   hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
@@ -723,7 +735,7 @@ int main(int argc, char* argv[]) {
   hists["h_yres"]->StatOverflows(kTRUE);
   hists["h_xres"]->StatOverflows(kTRUE);
 
-  vector<Road*> m_roads = create_roads(*GEOMETRY);
+  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -753,7 +765,7 @@ int main(int argc, char* argv[]) {
     }
     hists_2d["h_xy_all"]->Fill(xmuon, ymuon);
 
-    vector<int> oct_hitmask = oct_response(xpos,ypos,zpos);
+    vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
   
     vector<int> art_bc(NPLANES, -1.);
     double smallest_bc = 999999.;
@@ -850,86 +862,50 @@ int main(int argc, char* argv[]) {
     }
 
     slope_t myslope;
-    int max_xmuon = -1;
     myslope.mxl = 0.;
     myslope.count = 0;
     myslope.xavg = 0.;
     myslope.yavg = 0.;
     myslope.imuonhits = 0;
     myslope.xmuon = 0;
-    // order by most real x hits
-    slope_t maxslope;
-    maxslope.mxl = 0.;
-    maxslope.count = 0;
-    maxslope.xavg = 0.;
-    maxslope.yavg = 0.;
-    maxslope.imuonhits = 0;
-    maxslope.xmuon = 0;
 
-    vector<int> iroads;
+    // pick road with the most muon x hits
+    int most_hits = 0;
+    vector<int> iroads = {};
     for (unsigned int k = 0; k < m_slopes.size(); k++){
+      if (m_slopes[k].xmuon < most_hits)
+        continue;
+      if (m_slopes[k].xmuon > most_hits)
+        iroads.clear();
       iroads.push_back(k);
+      most_hits = m_slopes[k].xmuon;
     }
+    int the_chosen_one = iroads[ran->Integer((int)(iroads.size()))];
+    myslope.count       = m_slopes[the_chosen_one].count;
+    myslope.mxl         = m_slopes[the_chosen_one].mxl;
+    myslope.uvbkg       = m_slopes[the_chosen_one].uvbkg;
+    myslope.xavg        = m_slopes[the_chosen_one].xavg;
+    myslope.yavg        = m_slopes[the_chosen_one].yavg;
+    myslope.iroad       = m_slopes[the_chosen_one].iroad;
+    myslope.imuonhits   = m_slopes[the_chosen_one].imuonhits;
+    if (pltflag)
+      myslope.slopehits = m_slopes[the_chosen_one].slopehits;
 
-    // shuffle roads so we don't have a bias from iterating through roads by index
-    std::random_shuffle(iroads.begin(),iroads.end());
-
-    // pick road with the most real muon hits
-    for (unsigned int k = 0; k < iroads.size(); k++){
-      int j = iroads[k];
-      if (m_slopes[j].xmuon > maxslope.xmuon){
-        maxslope.count = m_slopes[j].count;
-        maxslope.mxl = m_slopes[j].mxl;
-        maxslope.uvbkg = m_slopes[j].uvbkg;
-        maxslope.xbkg = m_slopes[j].xbkg;
-        maxslope.xmuon = m_slopes[j].xmuon;
-        maxslope.xavg = m_slopes[j].xavg;
-        maxslope.yavg = m_slopes[j].yavg;
-        maxslope.imuonhits = m_slopes[j].imuonhits;
-        if (pltflag)
-          maxslope.slopehits = m_slopes[j].slopehits;
-      }
-      if (m_slopes[j].imuonhits > myslope.imuonhits){
-        myslope.count = m_slopes[j].count;
-        myslope.mxl = m_slopes[j].mxl;
-        myslope.uvbkg = m_slopes[j].uvbkg;
-        myslope.xbkg = m_slopes[j].xbkg;
-        myslope.xmuon = m_slopes[j].xmuon;
-        myslope.xavg = m_slopes[j].xavg;
-        myslope.yavg = m_slopes[j].yavg;
-        myslope.imuonhits = m_slopes[j].imuonhits;
-        if (pltflag)
-          myslope.slopehits = m_slopes[j].slopehits;
-      }
-    }
     if (fabs(myslope.xavg-xmuon) > 5. && pltflag){
-      //    if (fabs(myslope.xavg-xmuon) > 5. && pltflag){
       TString test = Form("event_disp_%d",i);
       TString test2 = Form("event_disp_alt_%d",i);
       plttrk(myslope.slopehits, true, test, ntrigroads, fout);
-      plttrk(maxslope.slopehits, true, test2, ntrigroads, fout);
-    }
-    if (myslope.xmuon < maxslope.xmuon && fabs(myslope.xavg-xmuon) > 5.){
-      cout << maxslope.xmuon << endl;
-      cout << "FUCK!!!!" << endl;
-      //      break;
     }
     double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
-    //cout << "delta x " << deltaMX*1000. << endl;
     if (db) {
       printf ("art (x,y): (%4.4f,%4.4f)", myslope.xavg, myslope.yavg);
       cout << endl;
       cout << endl;
     }
-    //      cout << "art (x,y): (" << myslope.xavg << "," << myslope.yavg << ")"<< endl;
+
     hists["h_mxres"]->Fill(deltaMX*1000.);
     hists["h_yres"]->Fill(myslope.yavg-ymuon);
     hists["h_xres"]->Fill(myslope.xavg-xmuon);
-    // if (myslope.xavg-xmuon < -2){
-    //   TString test = Form("event_disp_%d",i);
-    //   plttrk(myslope.slopehits, true, test, ntrigroads, fout);
-    // }
-      
     hists["h_nmu"]->Fill(myslope.imuonhits);
     hists_2d["h_nmuvsdx"]->Fill(myslope.imuonhits, myslope.xavg-xmuon);
     if (muon_trig_ok)
@@ -941,7 +917,6 @@ int main(int argc, char* argv[]) {
     hists["h_nx_bkg"]->Fill(myslope.xbkg);
     hists_2d["h_xres_nxbkg"]->Fill(myslope.xbkg,myslope.xavg-xmuon);
     hists_2d["h_xres_nxmuon"]->Fill(myslope.xmuon,myslope.xavg-xmuon);
-    hists_2d["h_xres_nxmaxmuon"]->Fill(maxslope.xmuon,maxslope.xavg-xmuon);
 
     if (myslope.uvbkg > 0){
       nevent_uvbkg++;
