@@ -570,6 +570,7 @@ int main(int argc, char* argv[]) {
   double m_sig_art = 32.;
   vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
   double chamber_eff = -1;
+  string histograms = "histograms";
 
   bool bkgflag = false;
   bool pltflag = false;
@@ -620,6 +621,9 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-uvr",4)==0){
       uvrflag = true;
+    }
+    if (strncmp(argv[i],"-hdir",4)==0){
+      histograms = argv[i+1];
     }
     if (strncmp(argv[i],"-e",2)==0){
       chamber_eff = atof(argv[i+1]);
@@ -976,8 +980,8 @@ int main(int argc, char* argv[]) {
   hists_2d["h_xy_eff"]->Divide(hists_2d["h_xy_trig"], hists_2d["h_xy_all"], 1.0, 1.0, "B");
 
   fout->cd();
-  fout->mkdir("histograms");
-  fout->cd("histograms");
+  fout->mkdir(histograms.c_str());
+  fout->cd(histograms.c_str());
   
   std::map<string, TH1F*>::iterator it = hists.begin();
   while (it != hists.end())
