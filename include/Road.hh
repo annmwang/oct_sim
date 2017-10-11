@@ -37,6 +37,8 @@ public:
   bool Horiz_ok();
   bool Stereo_ok();
   int UV_bkg();
+  int NX();
+  int NUV();
   bool Mature(int wind);
   double Mxl();
   double Xpos(double ch, int ib);
@@ -46,6 +48,9 @@ public:
   double AvgZofX();
   double AvgZofU();
   double AvgZofV();
+  double AvgYfromUV();
+  double AvgYfromUV_BestPair();
+  double YfromUV(Hit uhit, Hit vhit);
   std::vector<Hit> Hits();
 
 
@@ -301,6 +306,24 @@ int Road::UV_bkg(){
   return nuv_bkg;
 }
 
+int Road::NX(){
+  int n = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++)
+    if (m_hits[i].MMFE8Index() == 0 || m_hits[i].MMFE8Index() == 1 ||
+        m_hits[i].MMFE8Index() == 6 || m_hits[i].MMFE8Index() == 7)
+      n++;
+  return n;
+}
+
+int Road::NUV(){
+  int n = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++)
+    if (m_hits[i].MMFE8Index() == 2 || m_hits[i].MMFE8Index() == 4 ||
+        m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
+      n++;
+  return n;
+}
+
 bool Road::Mature(int wind){
   for (unsigned int i = 0; i < m_hits.size(); i++){
     if (m_hits[i].Age() == wind)
@@ -428,6 +451,48 @@ double Road::AvgZofV(){
   }
   double avg_z = std::accumulate(zs.begin(), zs.end(), 0.0)/(double)zs.size();
   return avg_z;
+}
+
+double Road::AvgYfromUV(){
+  double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+  return -B*( AvgXofU() - AvgXofV() + (AvgZofV()-AvgZofU())*Mxl() ) / 2;
+}
+
+double Road::YfromUV(Hit uhit, Hit vhit){
+  double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+  double xpos_u, xpos_v, zpos_u, zpos_v;
+  xpos_u = Xpos(uhit.Channel(), uhit.MMFE8Index());
+  xpos_v = Xpos(vhit.Channel(), vhit.MMFE8Index());
+  zpos_u = m_geometry->Get(uhit.MMFE8Index()).Origin().Z();
+  zpos_v = m_geometry->Get(vhit.MMFE8Index()).Origin().Z();
+  return -B*( xpos_u - xpos_v + (zpos_v-zpos_u)*Mxl() ) / 2;
+}
+
+double Road::AvgYfromUV_BestPair(){
+
+  double xpos_u, xpos_v, xpos_uv, diff, best_diff, best_y;
+  best_diff = 99999.9;
+  best_y = 0.0;
+
+  for (auto uhit: m_hits){
+    if (! uhit.isU())
+      continue;
+    for (auto vhit: m_hits){
+      if (! vhit.isV())
+        continue;
+
+      xpos_u = Xpos(uhit.Channel(), uhit.MMFE8Index());
+      xpos_v = Xpos(vhit.Channel(), vhit.MMFE8Index());
+      xpos_uv = (xpos_u + xpos_v) / 2.0;
+      diff = std::fabs(xpos_uv - AvgXofX());
+
+      if (diff < best_diff){
+        best_diff = diff;
+        best_y    = YfromUV(uhit, vhit);
+      }
+    }
+  }
+  return best_y;
 }
 
 std::vector<Hit> Road::Hits(){
