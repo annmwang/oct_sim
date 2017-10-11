@@ -58,7 +58,8 @@ int bc_wind;
 double sig_art;
 
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
-double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
+double mm_eff[8] = {1.,1.,1.,1.,1.,1.,1.,1.}; // i apologize for this array
+//double mm_eff[8] = {0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9}; // i apologize for this array
 
 // colors
 string pink = "\033[38;5;205m";
@@ -72,6 +73,8 @@ struct slope_t {
   int iroad;
   int imuonhits;
   int uvbkg;
+  int xbkg;
+  int xmuon;
   double mxl;
   double xavg;
   double yavg;
@@ -386,6 +389,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         m_slope.iroad = roads[i]->iRoad();
         m_slope.imuonhits = nmuonhits;
         m_slope.uvbkg = roads[i]->UV_bkg();
+        m_slope.xbkg = roads[i]->X_bkg();
+        m_slope.xmuon = roads[i]->X_muon();
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
         m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
@@ -427,11 +432,11 @@ void setstyle(){
 void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file){
   vector <double> pts;
   vector <double> zpts;
-  vector <int> ib;
+  vector <int> ib,bc;
   vector <double> ch;
   vector <double> bkgpts;
   vector <double> bkgzpts;
-  vector <int> bkgib;
+  vector <int> bkgib,bkgbc;
   vector <double> bkgch;
 
   Double_t zpos[8] = {0., 11.2, 32.4, 43.6,
@@ -448,6 +453,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
       }
       zpts.push_back(zpos[hits[i].MMFE8Index()]);
       ch.push_back(hits[i].Channel());
+      bc.push_back(hits[i].BC());
     }
     else{
       bkgib.push_back(hits[i].MMFE8Index());
@@ -459,6 +465,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
       }
       bkgzpts.push_back(zpos[hits[i].MMFE8Index()]);
       bkgch.push_back(hits[i].Channel());
+      bkgbc.push_back(hits[i].BC());
     }
   }
   setstyle();
@@ -474,8 +481,10 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
       Double_t board_z[2];      
       if (xflag){
         if (bkgpts.size() > 0){
-        board_x[0] = *min_element(bkgpts.begin(),bkgpts.end())-10.;
-        board_x[1] = *max_element(bkgpts.begin(),bkgpts.end())+10;
+          double min_ptx = *min_element(pts.begin(),pts.end());
+          double max_ptx = *max_element(pts.begin(),pts.end());
+            board_x[0] = min(*min_element(bkgpts.begin(),bkgpts.end()),min_ptx)-10.;
+          board_x[1] = max(*max_element(bkgpts.begin(),bkgpts.end()),max_ptx)+10;
         }
         else{
          board_x[0] = xlow;
@@ -500,7 +509,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     gr->SetMarkerSize(1.4);
     leg->AddEntry(gr,"muon","p");
     for (unsigned int j = 0; j < zpts.size(); j++){
-      TLatex *latex = new TLatex(gr->GetX()[j], gr->GetY()[j], Form("%6.f",ch[j]));
+      TLatex *latex = new TLatex(gr->GetX()[j], gr->GetY()[j], Form("%6.f, %d",ch[j],bc[j]));
       latex->SetTextSize(0.03);
       gr->GetListOfFunctions()->Add(latex);
     }
@@ -511,7 +520,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
     grbkg->SetMarkerSize(1.);
     leg->AddEntry(grbkg, "bkgd.","p");
     for (unsigned int j = 0; j < bkgzpts.size(); j++){
-      TLatex *latex = new TLatex(grbkg->GetX()[j], grbkg->GetY()[j], Form("%6.f",bkgch[j]));
+      TLatex *latex = new TLatex(grbkg->GetX()[j], grbkg->GetY()[j], Form("%6.f, %d",bkgch[j],bkgbc[j]));
       latex->SetTextSize(0.03);
       grbkg->GetListOfFunctions()->Add(latex);
     }
@@ -635,6 +644,8 @@ int main(int argc, char* argv[]) {
   cout << blue << "--------------" << ending << endl;
   cout << endl;
   cout << endl;
+  printf("\r >> plot flag: %s", pltflag ? "true" : "false");
+  cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
   printf("\r >> art res (in ns): %f", m_sig_art);
@@ -695,6 +706,10 @@ int main(int argc, char* argv[]) {
   hists_2d["h_nmuvsdx"] = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
   hists["h_dx"] = new TH1F("h_dx", "h_dx", 500, -3500,3500);
   hists["h_nuv_bkg"] = new TH1F("h_nuv_bkg", "", 5, -0.5, 4.5);
+  hists["h_nx_bkg"] = new TH1F("h_nx_bkg", "", 5, -0.5, 4.5);
+  hists_2d["h_xres_nxbkg"] = new TH2D("h_xres_nxbkg", "h_xres_nxbkg", 5, -0.5, 4.5 , 122, -30.5, 30.5);
+  hists_2d["h_xres_nxmuon"] = new TH2D("h_xres_nxmuon", "h_xres_nxmuon", 5, -0.5, 4.5 , 122, -30.5, 30.5);
+  hists_2d["h_xres_nxmaxmuon"] = new TH2D("h_xres_nxmaxmuon", "h_xres_nxmaxmuon", 5, -0.5, 4.5 , 122, -30.5, 30.5);
 
   hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
@@ -714,8 +729,8 @@ int main(int argc, char* argv[]) {
   time_t curr_time;
   for ( int i = 0; i < nevents; i++){
 
-    if (nevents > 1000){
-      if (i % ((int)nevents/1000) == 0){
+    if (nevents > 10){
+      if (i % ((int)nevents/10) == 0){
         curr_time = time(NULL);
         progress(curr_time-timer, i, nevents);
       }
@@ -835,11 +850,21 @@ int main(int argc, char* argv[]) {
     }
 
     slope_t myslope;
+    int max_xmuon = -1;
     myslope.mxl = 0.;
     myslope.count = 0;
     myslope.xavg = 0.;
     myslope.yavg = 0.;
     myslope.imuonhits = 0;
+    myslope.xmuon = 0;
+    // order by most real x hits
+    slope_t maxslope;
+    maxslope.mxl = 0.;
+    maxslope.count = 0;
+    maxslope.xavg = 0.;
+    maxslope.yavg = 0.;
+    maxslope.imuonhits = 0;
+    maxslope.xmuon = 0;
 
     vector<int> iroads;
     for (unsigned int k = 0; k < m_slopes.size(); k++){
@@ -852,10 +877,24 @@ int main(int argc, char* argv[]) {
     // pick road with the most real muon hits
     for (unsigned int k = 0; k < iroads.size(); k++){
       int j = iroads[k];
+      if (m_slopes[j].xmuon > maxslope.xmuon){
+        maxslope.count = m_slopes[j].count;
+        maxslope.mxl = m_slopes[j].mxl;
+        maxslope.uvbkg = m_slopes[j].uvbkg;
+        maxslope.xbkg = m_slopes[j].xbkg;
+        maxslope.xmuon = m_slopes[j].xmuon;
+        maxslope.xavg = m_slopes[j].xavg;
+        maxslope.yavg = m_slopes[j].yavg;
+        maxslope.imuonhits = m_slopes[j].imuonhits;
+        if (pltflag)
+          maxslope.slopehits = m_slopes[j].slopehits;
+      }
       if (m_slopes[j].imuonhits > myslope.imuonhits){
         myslope.count = m_slopes[j].count;
         myslope.mxl = m_slopes[j].mxl;
         myslope.uvbkg = m_slopes[j].uvbkg;
+        myslope.xbkg = m_slopes[j].xbkg;
+        myslope.xmuon = m_slopes[j].xmuon;
         myslope.xavg = m_slopes[j].xavg;
         myslope.yavg = m_slopes[j].yavg;
         myslope.imuonhits = m_slopes[j].imuonhits;
@@ -863,10 +902,17 @@ int main(int argc, char* argv[]) {
           myslope.slopehits = m_slopes[j].slopehits;
       }
     }
-
-    if (i < 10 && pltflag){
+    if (fabs(myslope.xavg-xmuon) > 5. && pltflag){
+      //    if (fabs(myslope.xavg-xmuon) > 5. && pltflag){
       TString test = Form("event_disp_%d",i);
+      TString test2 = Form("event_disp_alt_%d",i);
       plttrk(myslope.slopehits, true, test, ntrigroads, fout);
+      plttrk(maxslope.slopehits, true, test2, ntrigroads, fout);
+    }
+    if (myslope.xmuon < maxslope.xmuon && fabs(myslope.xavg-xmuon) > 5.){
+      cout << maxslope.xmuon << endl;
+      cout << "FUCK!!!!" << endl;
+      //      break;
     }
     double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
     //cout << "delta x " << deltaMX*1000. << endl;
@@ -892,6 +938,10 @@ int main(int argc, char* argv[]) {
       extratrig++;
 
     hists["h_nuv_bkg"]->Fill(myslope.uvbkg);
+    hists["h_nx_bkg"]->Fill(myslope.xbkg);
+    hists_2d["h_xres_nxbkg"]->Fill(myslope.xbkg,myslope.xavg-xmuon);
+    hists_2d["h_xres_nxmuon"]->Fill(myslope.xmuon,myslope.xavg-xmuon);
+    hists_2d["h_xres_nxmaxmuon"]->Fill(maxslope.xmuon,maxslope.xavg-xmuon);
 
     if (myslope.uvbkg > 0){
       nevent_uvbkg++;
