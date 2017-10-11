@@ -37,6 +37,9 @@ public:
   bool Horiz_ok();
   bool Stereo_ok();
   int UV_bkg();
+  int UV_muon();
+  int X_bkg();
+  int X_muon();
   int NX();
   int NUV();
   bool Mature(int wind);
@@ -306,6 +309,38 @@ int Road::UV_bkg(){
   return nuv_bkg;
 }
 
+int Road::UV_muon(){
+  int nuv_muon = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++){
+    if (m_hits[i].MMFE8Index() == 2 || m_hits[i].MMFE8Index() == 4)
+      if (m_hits[i].IsNoise() == false)
+        nuv_muon++;
+    if (m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
+      if (m_hits[i].IsNoise() == false)
+        nuv_muon++;
+  }
+  return nuv_muon;
+}
+
+int Road::X_bkg(){
+  int nx_bkg = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++){
+    if (m_hits[i].MMFE8Index() < 2 || m_hits[i].MMFE8Index() > 5)
+      if (m_hits[i].IsNoise() == true)
+        nx_bkg++;
+  }
+  return nx_bkg;
+}
+
+int Road::X_muon(){
+  int nx_muon = 0;
+  for (unsigned int i = 0; i < m_hits.size(); i++){
+    if (m_hits[i].MMFE8Index() < 2 || m_hits[i].MMFE8Index() > 5)
+      if (m_hits[i].IsNoise() == false)
+        nx_muon++;
+  }
+  return nx_muon;
+}
 int Road::NX(){
   int n = 0;
   for (unsigned int i = 0; i < m_hits.size(); i++)
