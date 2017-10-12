@@ -31,6 +31,7 @@ public:
   double x_pos() const;
   double y_pos() const;
   double x_pos_at_end() const;
+  bool IsReal() const;
   bool IsNoise() const;
 
   void SetMMFE8Index(int ib);
@@ -145,6 +146,10 @@ inline double Hit::x_pos_at_end() const{
 
 inline bool Hit::IsNoise() const{
   return m_IsNoise;
+}
+
+inline bool Hit::IsReal() const{
+  return !m_IsNoise;
 }
 
 inline void Hit::SetPos(double xpos, double ypos, int ib){

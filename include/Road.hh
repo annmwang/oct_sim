@@ -30,7 +30,7 @@ public:
   bool Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor);
   bool Contains_Neighbors(const Hit& hit, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
   void Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor);
-  void Add_Hits(std::vector<Hit*> & hits, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
+  void Add_Hits(std::vector<Hit*> & hits, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv, bool ideal_tp);
   void Increment_Age(int wind);
   bool Coincidence(int wind);
   int NMuon();
@@ -221,17 +221,34 @@ inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor)
 
 inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, 
                            int nstr_up_xx, int nstr_dn_xx, 
-                           int nstr_up_uv, int nstr_dn_uv){
+                           int nstr_up_uv, int nstr_dn_uv,
+                           bool ideal_tp){
+
   for (auto hit_i: hits){
     int bo = hit_i->MMFE8Index();
     bool has_hit = false;
     if (Contains_Neighbors(*hit_i, roadsize, nstr_up_xx, nstr_dn_xx, nstr_up_uv, nstr_dn_uv)){
+
       for (auto hit_j: m_hits){
         if (hit_j.MMFE8Index() == bo){
           has_hit = true;
           break;
         }
       }
+
+      if (ideal_tp && hit_i->IsReal()){
+        int erase_me = -1;
+        for (unsigned int j = 0; j < m_hits.size(); j++){
+          if (m_hits[j].MMFE8Index() == bo && m_hits[j].IsNoise()){
+            erase_me = j;
+            has_hit = false;
+            break;
+          }
+        }
+        if (erase_me >= 0)
+          m_hits.erase(m_hits.begin() + erase_me);
+      }
+
       if (has_hit)
         continue;
       m_hits.push_back(*hit_i);
