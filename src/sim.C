@@ -285,7 +285,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   return oct_hitmask;
 }
 
-tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits, int evt){
+tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_tp, int evt){
 
   // applies the MMTP finder to a series of hits and roads
   // returns slope structs for roads which found a coincidence and have at least 1 real muon hit
@@ -348,6 +348,14 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         // if 2+ hits in same vmm, erase all except 1 randomly
         if (vmm_same.size() > 1){
           int the_chosen_one = ran->Integer((int)(vmm_same.size()));
+          
+          if (ideal_vmm)
+            for (unsigned int k = 0; k < vmm_same.size(); k++)
+              if (hits_now[vmm_same[k]]->IsReal()){
+                the_chosen_one = k;
+                break;
+              }
+          
           for (int k = vmm_same.size()-1; k > -1; k--)
             if (k != the_chosen_one)
               hits_now.erase(hits_now.begin()+vmm_same[k]);
@@ -358,7 +366,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
     for (unsigned int i = 0; i < roads.size(); i++){
 
       roads[i]->Increment_Age(bc_wind);
-      roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
+      roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV, ideal_tp);
 
       if (roads[i]->Coincidence(bc_wind)){
         if (db){
@@ -575,6 +583,8 @@ int main(int argc, char* argv[]) {
   bool bkgflag = false;
   bool pltflag = false;
   bool uvrflag = false;
+  bool ideal_tp  = false;
+  bool ideal_vmm = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -629,6 +639,12 @@ int main(int argc, char* argv[]) {
       chamber_eff = atof(argv[i+1]);
       for (unsigned int i = 0; i < mm_eff.size(); i++)
         mm_eff[i] = chamber_eff;
+    }
+    if (strncmp(argv[i],"-ideal-vmm", 10)==0){
+      ideal_vmm = true;
+    }
+    if (strncmp(argv[i],"-ideal-tp", 9)==0){
+      ideal_tp = true;
     }
   }
   if (!b_out){
@@ -848,7 +864,7 @@ int main(int argc, char* argv[]) {
 
     vector<slope_t> m_slopes;
     int ntrigroads;
-    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, i);
+    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, ideal_vmm, ideal_tp, i);
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
