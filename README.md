@@ -23,3 +23,8 @@ Configurable parameters include:
 * [-b] bkg rate in Hz/strip
 * [-p] plotting
 * [-o] output file
+* [-uvr] turn on UV roads
+* [-hdir] name of histograms TDirectory
+* [-e] chamber efficiency (0 to 1)
+* [-ideal-vmm] allow the VMM to always pick the signal hit
+* [-ideal-tp] allow the TP to always pick the signal hit
