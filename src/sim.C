@@ -893,12 +893,12 @@ int main(int argc, char* argv[]) {
     int most_hits = 0;
     vector<int> iroads = {};
     for (unsigned int k = 0; k < m_slopes.size(); k++){
-      if (m_slopes[k].xmuon < most_hits)
+      if (m_slopes[k].imuonhits < most_hits)
         continue;
-      if (m_slopes[k].xmuon > most_hits)
+      if (m_slopes[k].imuonhits > most_hits)
         iroads.clear();
       iroads.push_back(k);
-      most_hits = m_slopes[k].xmuon;
+      most_hits = m_slopes[k].imuonhits;
     }
     int the_chosen_one = iroads[ran->Integer((int)(iroads.size()))];
     myslope.count       = m_slopes[the_chosen_one].count;
