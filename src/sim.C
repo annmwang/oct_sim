@@ -45,6 +45,7 @@ bool db = false; // debug output flag
 
 int NPLANES = 8;
 int NSTRIPS;
+int ADDC_BUFFER = 8;
 double xlow, xhigh, ylow, yhigh; // chamber dimensions
 double mu_xlow, mu_xhigh, mu_ylow, mu_yhigh; // active chamber area to decouple edge effects
 
@@ -86,6 +87,9 @@ bool compare_channel(Hit* a, Hit* b){
 }
 bool compare_slope(slope_t a, slope_t b){
   return (a.iroad < b.iroad);
+}
+bool compare_second(std::pair<int, double> a, std::pair<int, double> b){
+  return (a.second < b.second);
 }
 
 void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uvrflag){
@@ -204,9 +208,10 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   std::tie(thx,thy) = cosmic_angle();
 
   double avgz = 0.5*(zpos[0]+zpos[NPLANES-1]);
-  double z, x_b, y_b;
+  double x_b, y_b;
+  // double z, x_b, y_b;
   for ( int j = 0; j < NPLANES; j++){
-    z = zpos[j];
+    // z = zpos[j];
     x_b = TMath::Tan(thx)*(zpos[j]-avgz)+x;
     y_b = TMath::Tan(thy)*(zpos[j]-avgz)+y;
     xpos[j] = x_b;
@@ -251,7 +256,7 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
 
   int noise_window = bc_wind * 3;
   int start_noise = start_bc - bc_wind;
-  int end_noise = start_noise + noise_window - 1;
+  // int end_noise = start_noise + noise_window - 1;
   // int end_noise = start_bc + bc_wind * 2 -1;
 
   //assume uniform distribution of background - correct for noise
@@ -285,7 +290,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   return oct_hitmask;
 }
 
-tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_tp, int evt){
+tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_addc, bool ideal_tp, int evt){
 
   // applies the MMTP finder to a series of hits and roads
   // returns slope structs for roads which found a coincidence and have at least 1 real muon hit
@@ -311,7 +316,10 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
     roads[i]->Reset();
   vector<Hit*> hits_now = {};
   vector<int> vmm_same  = {};
-  int n_vmm = NSTRIPS/64;
+  vector< pair<int, double> > addc_same = {};
+  vector<int> to_erase = {};
+  int n_vmm  = NSTRIPS/64;
+  int n_addc = NSTRIPS/2048;
 
   // each road makes independent triggers, evaluated on each BC
   for (int bc = bc_start; bc < bc_end; bc++){
@@ -328,12 +336,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
       }
     }
 
-    // implement ADDC-like handling
-    // turn this off until we dive into emulating the ADDC
-    // std::sort(hits_now.begin(), hits_now.end(), compare_channel);
-
     //implement vmm ART-like signal
-    //turn this off until it is less slow
     for (int ib = 0; ib < NPLANES; ib++){
       for (int j = 0; j < n_vmm; j++){
         vmm_same.clear();
@@ -360,6 +363,34 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
             if (k != the_chosen_one)
               hits_now.erase(hits_now.begin()+vmm_same[k]);
         }
+      }
+
+      // implement ADDC-like handling
+      for (int ia = 0; ia < n_addc; ia++){
+
+        // collect all hits on one ADDC
+        addc_same.clear();
+        for (unsigned int k = 0; k < hits_now.size(); k++)
+          if (hits_now[k]->MMFE8Index() == ib && hits_now[k]->ADDC() == ia)
+            addc_same.push_back( std::make_pair(k, hits_now[k]->Channel()) );
+        
+        if ((int)(addc_same.size()) <= ADDC_BUFFER)
+          continue;
+
+        // priority encode the hits by channel number; remember hits 8+
+        to_erase.clear();
+        std::sort(addc_same.begin(), addc_same.end(), compare_second);
+        for (int it = ADDC_BUFFER; it < (int)(addc_same.size()); it++)
+          to_erase.push_back(addc_same[it].first);
+
+        // reverse and erase
+        std::sort(to_erase.rbegin(), to_erase.rend()); 
+        for (auto k: to_erase)
+          if (ideal_addc && hits_now[k]->IsReal())
+            continue;
+          else
+            hits_now.erase(hits_now.begin() + k);
+        
       }
     }
 
@@ -583,8 +614,9 @@ int main(int argc, char* argv[]) {
   bool bkgflag = false;
   bool pltflag = false;
   bool uvrflag = false;
-  bool ideal_tp  = false;
-  bool ideal_vmm = false;
+  bool ideal_tp   = false;
+  bool ideal_vmm  = false;
+  bool ideal_addc = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -642,6 +674,9 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-ideal-vmm", 10)==0){
       ideal_vmm = true;
+    }
+    if (strncmp(argv[i],"-ideal-addc", 11)==0){
+      ideal_addc = true;
     }
     if (strncmp(argv[i],"-ideal-tp", 9)==0){
       ideal_tp = true;
@@ -864,7 +899,7 @@ int main(int argc, char* argv[]) {
 
     vector<slope_t> m_slopes;
     int ntrigroads;
-    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, ideal_vmm, ideal_tp, i);
+    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, ideal_vmm, ideal_addc, ideal_tp, i);
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
