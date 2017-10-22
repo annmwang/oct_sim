@@ -681,6 +681,9 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-ideal-tp", 9)==0){
       ideal_tp = true;
     }
+    if (strncmp(argv[i],"-seed", 5)==0){
+      ran->SetSeed( atoi(argv[i+1]) );
+    }
   }
   if (!b_out){
     cout << "Error at Input: please specify output file (-o flag)" << endl;
@@ -723,6 +726,8 @@ int main(int argc, char* argv[]) {
     printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
     cout << endl;
   }
+  printf("\r >> Seed for TRandom3: %d", ran->GetSeed());
+  cout << endl;
   cout << endl;
   cout << endl;
     

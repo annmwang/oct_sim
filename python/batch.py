@@ -3,6 +3,8 @@ batch.py :: a script for launching sim jobs
 
 Run like:
 > python python/batch.py -j 10 -a "-n 1000 -ch large -b 1"
+
+To set the seed based on job number, use "-seed \$SLURM_JOB_ID" in the -a arguments.
 """
 
 import argparse
@@ -29,7 +31,6 @@ def main():
     config["outdir"]    = ops.o or "/n/atlasfs/atlascode/oct_sim/batch-%s" % (config["timestamp"])
     config["user"]      = os.environ["USER"]
     config["submit"]    = not ops.d
-    config["sleep"]     = ops.s or 1
 
     # checks
     if not os.path.isfile(config["exe"]):
@@ -63,7 +64,7 @@ def main():
         if config["submit"]:
             cmd = "sbatch %s" % config["jobname"]
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            time.sleep(int(config["sleep"]))
+            time.sleep(2)
             stdout, stderr = proc.communicate()
             double_check(stdout, stderr, cmd)
 
@@ -71,7 +72,7 @@ def main():
             jobfile = open(config["jobname"], "a")
             jobfile.write("# stdout: %s\n" % stdout.replace("\n", " "))
             jobfile.close()
-            print "Submitted %4i / %4i" % (job+1, config["jobs"])
+            print "Submitted %4i / %4i @ %s" % (job+1, config["jobs"], time.strftime("%Y-%m-%d-%Hh%Mm%Ss"))
 
     print
 
@@ -122,7 +123,6 @@ def options():
     parser.add_argument("-a", default=None,        help="String of arguments to pass to ./sim (excluding -o)")
     parser.add_argument("-j", default=None,        help="Number of jobs to launch")
     parser.add_argument("-o", default=None,        help="Output file name")
-    parser.add_argument("-s", default=None,        help="Seconds to sleep between launched jobs")
     parser.add_argument("-d", action="store_true", help="Dry run: do everything except submit")
     return parser.parse_args()
 
