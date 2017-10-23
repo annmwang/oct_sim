@@ -607,7 +607,8 @@ int main(int argc, char* argv[]) {
   int m_xroad = 8;
   int m_bcwind = 8;
   double m_sig_art = 32.;
-  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
+  vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
+  //  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
   double chamber_eff = -1;
   string histograms = "histograms";
 
@@ -795,6 +796,9 @@ int main(int argc, char* argv[]) {
   hists["h_yres"]->StatOverflows(kTRUE);
   hists["h_xres"]->StatOverflows(kTRUE);
 
+  // multiplicity studies
+  hists["h_ntrig"] = new TH1F("h_ntrig", "h_ntrig", 20, -0.5, 19.5);
+
   vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag);
 
   time_t timer = time(NULL);
@@ -905,6 +909,7 @@ int main(int argc, char* argv[]) {
     vector<slope_t> m_slopes;
     int ntrigroads;
     std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, ideal_vmm, ideal_addc, ideal_tp, i);
+    hists["h_ntrig"]->Fill(ntrigroads);
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
@@ -914,7 +919,7 @@ int main(int argc, char* argv[]) {
     }
 
     // got a trigger, but none with real hits
-    if (m_slopes.size() == 0){
+    if (m_slopes.size() == 0 && ntrigroads != 0 ){
       nevent_allnoise++;
       if (db)
         cout << "Didn't trigger with real hits:( " << endl;
