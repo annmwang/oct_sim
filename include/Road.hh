@@ -18,8 +18,8 @@ class Road {
 
 public:
   Road();
-  Road(int iroad, const GeoOctuplet& geometry);
-  Road(const GeoOctuplet* geometry, int iroadx, int iroadu = -1, int iroadv = -1);
+  Road(int iroad, const GeoOctuplet& geometry, int xthr, int uvthr);
+  Road(const GeoOctuplet* geometry, int xthr, int uvthr, int iroadx, int iroadu = -1, int iroadv = -1);
   ~Road();
 
   int iRoad();
@@ -64,6 +64,9 @@ private:
   int m_iroadv;
   std::vector<Hit> m_hits;
 
+  int m_xthr;
+  int m_uvthr;
+
   const GeoOctuplet* m_geometry;
   bool m_trig;
 };
@@ -74,19 +77,23 @@ inline Road::Road(){
   m_trig = false;
 }
 
-inline Road::Road(int iroad, const GeoOctuplet& geometry){
+inline Road::Road(int iroad, const GeoOctuplet& geometry, int xthr, int uvthr){
   m_iroad = iroad;
   m_geometry = &geometry;
   m_trig = false;
+  m_xthr = xthr;
+  m_uvthr = uvthr;
 }
 
-inline Road::Road(const GeoOctuplet* geometry, int iroadx, int iroadu, int iroadv){
+inline Road::Road(const GeoOctuplet* geometry, int xthr, int uvthr, int iroadx, int iroadu, int iroadv){
   m_iroad  = iroadx;
   m_iroadx = iroadx;
   m_iroadu = (iroadu != -1) ? iroadu : iroadx;
   m_iroadv = (iroadv != -1) ? iroadv : iroadx;
   m_geometry = geometry;
   m_trig = false;
+  m_xthr = xthr;
+  m_uvthr = uvthr;
 
   if (iroadu == -1 && iroadv != -1)
     std::cout << "WARNING: iroadu = -1 but iroadv aint" << std::endl;
@@ -294,7 +301,7 @@ bool Road::Horiz_ok(){
     if (m_hits[i].MMFE8Index() > 5)
       nx2++;
   }
-  if (nx1 > 0 && nx2 > 0)
+  if (nx1 > 0 && nx2 > 0 && (nx1+nx2) >= m_xthr)
     return true;
   return false;
 }
@@ -308,7 +315,7 @@ bool Road::Stereo_ok(){
     if (m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
       nv++;
   }
-  if (nu > 0 && nv > 0)
+  if (nu > 0 && nv > 0 && (nu+nv) >= m_uvthr)
     return true;
   return false;
 }

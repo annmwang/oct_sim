@@ -161,7 +161,7 @@ tuple<double,double> cosmic_angle(){
   return make_tuple(0.,0.);
 }
 
-vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
+vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr, int m_uvthr){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
@@ -169,7 +169,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
   for ( int i = 0; i < nroad; i++){
 
     Road* myroad = nullptr;
-    myroad = new Road(&geometry, i);
+    myroad = new Road(&geometry, m_xthr, m_uvthr, i);
     m_roads.push_back(myroad);
     
     int nuv = 0;
@@ -178,12 +178,12 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
     for (int uv = 1; uv <= nuv; uv++){
       if (i-uv < 0)
         continue;
-      Road* myroad_0 = new Road(&geometry, i, i+uv,   i-uv);
-      Road* myroad_1 = new Road(&geometry, i, i-uv,   i+uv);
-      Road* myroad_2 = new Road(&geometry, i, i+uv-1, i-uv);
-      Road* myroad_3 = new Road(&geometry, i, i-uv,   i+uv-1);
-      Road* myroad_4 = new Road(&geometry, i, i-uv+1, i+uv);
-      Road* myroad_5 = new Road(&geometry, i, i+uv,   i-uv+1);
+      Road* myroad_0 = new Road(&geometry, m_xthr, m_uvthr, i, i+uv,   i-uv);
+      Road* myroad_1 = new Road(&geometry, m_xthr, m_uvthr, i, i-uv,   i+uv);
+      Road* myroad_2 = new Road(&geometry, m_xthr, m_uvthr, i, i+uv-1, i-uv);
+      Road* myroad_3 = new Road(&geometry, m_xthr, m_uvthr, i, i-uv,   i+uv-1);
+      Road* myroad_4 = new Road(&geometry, m_xthr, m_uvthr, i, i-uv+1, i+uv);
+      Road* myroad_5 = new Road(&geometry, m_xthr, m_uvthr, i, i+uv,   i-uv+1);
       m_roads.push_back(myroad_0);
       m_roads.push_back(myroad_1);
       m_roads.push_back(myroad_2);
@@ -612,6 +612,10 @@ int main(int argc, char* argv[]) {
   double chamber_eff = -1;
   string histograms = "histograms";
 
+  // coincidence params
+  int m_xthr = 2;
+  int m_uvthr = 2;
+
   bool bkgflag = false;
   bool pltflag = false;
   bool uvrflag = false;
@@ -647,6 +651,12 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-w",2)==0){
       m_bcwind = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-xthr",5)==0){
+      m_xthr = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-uvthr",6)==0){
+      m_uvthr = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-ch",3)==0){
       sscanf(argv[i+1],"%s", chamberType);
@@ -797,9 +807,10 @@ int main(int argc, char* argv[]) {
   hists["h_xres"]->StatOverflows(kTRUE);
 
   // multiplicity studies
-  hists["h_ntrig"] = new TH1F("h_ntrig", "h_ntrig", 20, -0.5, 19.5);
+  hists["h_ntrig"] = new TH1F("h_ntrig", "h_ntrig", 101, -0.5, 100.5);
+  hists["h_ntrig_bkgonly"] = new TH1F("h_ntrig_bkgonly", "h_ntrig_bkgonly", 101, -0.5, 100.5);
 
-  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag);
+  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -908,6 +919,8 @@ int main(int argc, char* argv[]) {
 
     vector<slope_t> m_slopes;
     int ntrigroads;
+    int ntrigroads_bkgonly = 0;
+
     std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, ideal_vmm, ideal_addc, ideal_tp, i);
     hists["h_ntrig"]->Fill(ntrigroads);
     if (db)
@@ -938,6 +951,8 @@ int main(int argc, char* argv[]) {
     int most_hits = 0;
     vector<int> iroads = {};
     for (unsigned int k = 0; k < m_slopes.size(); k++){
+      if (m_slopes[k].imuonhits == 0)
+        ntrigroads_bkgonly++;
       if (m_slopes[k].imuonhits < most_hits)
         continue;
       if (m_slopes[k].imuonhits > most_hits)
@@ -945,6 +960,8 @@ int main(int argc, char* argv[]) {
       iroads.push_back(k);
       most_hits = m_slopes[k].imuonhits;
     }
+    hists["h_ntrig_bkgonly"]->Fill(ntrigroads_bkgonly);
+
     int the_chosen_one = iroads[ran->Integer((int)(iroads.size()))];
     myslope.count       = m_slopes[the_chosen_one].count;
     myslope.mxl         = m_slopes[the_chosen_one].mxl;
