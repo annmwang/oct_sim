@@ -652,10 +652,10 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-w",2)==0){
       m_bcwind = atoi(argv[i+1]);
     }
-    if (strncmp(argv[i],"-xthr",5)==0){
+    if (strncmp(argv[i],"-thrx",5)==0){
       m_xthr = atoi(argv[i+1]);
     }
-    if (strncmp(argv[i],"-uvthr",6)==0){
+    if (strncmp(argv[i],"-thruv",6)==0){
       m_uvthr = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-ch",3)==0){
