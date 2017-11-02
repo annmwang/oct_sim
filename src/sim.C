@@ -73,6 +73,7 @@ struct slope_t {
   int uvbkg;
   int xbkg;
   int xmuon;
+  int age; //WRT first muon hit BC
   double mxl;
   double xavg;
   double yavg;
@@ -161,7 +162,7 @@ tuple<double,double> cosmic_angle(){
   return make_tuple(0.,0.);
 }
 
-vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
+vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr, int m_uvthr){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
@@ -169,7 +170,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
   for ( int i = 0; i < nroad; i++){
 
     Road* myroad = nullptr;
-    myroad = new Road(&geometry, i);
+    myroad = new Road(&geometry, m_xthr, m_uvthr, i);
     m_roads.push_back(myroad);
     
     int nuv = 0;
@@ -178,12 +179,12 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag){
     for (int uv = 1; uv <= nuv; uv++){
       if (i-uv < 0)
         continue;
-      Road* myroad_0 = new Road(&geometry, i, i+uv,   i-uv);
-      Road* myroad_1 = new Road(&geometry, i, i-uv,   i+uv);
-      Road* myroad_2 = new Road(&geometry, i, i+uv-1, i-uv);
-      Road* myroad_3 = new Road(&geometry, i, i-uv,   i+uv-1);
-      Road* myroad_4 = new Road(&geometry, i, i-uv+1, i+uv);
-      Road* myroad_5 = new Road(&geometry, i, i+uv,   i-uv+1);
+      Road* myroad_0 = new Road(&geometry, m_xthr, m_uvthr, i, i+uv,   i-uv);
+      Road* myroad_1 = new Road(&geometry, m_xthr, m_uvthr, i, i-uv,   i+uv);
+      Road* myroad_2 = new Road(&geometry, m_xthr, m_uvthr, i, i+uv-1, i-uv);
+      Road* myroad_3 = new Road(&geometry, m_xthr, m_uvthr, i, i-uv,   i+uv-1);
+      Road* myroad_4 = new Road(&geometry, m_xthr, m_uvthr, i, i-uv+1, i+uv);
+      Road* myroad_5 = new Road(&geometry, m_xthr, m_uvthr, i, i+uv,   i-uv+1);
       m_roads.push_back(myroad_0);
       m_roads.push_back(myroad_1);
       m_roads.push_back(myroad_2);
@@ -290,7 +291,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   return oct_hitmask;
 }
 
-tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_addc, bool ideal_tp, int evt){
+tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_addc, bool ideal_tp, int evt){
 
   // applies the MMTP finder to a series of hits and roads
   // returns slope structs for roads which found a coincidence and have at least 1 real muon hit
@@ -425,6 +426,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, vector<Road*> roads, bo
         m_slope.uvbkg = roads[i]->UV_bkg();
         m_slope.xbkg = roads[i]->X_bkg();
         m_slope.xmuon = roads[i]->X_muon();
+        m_slope.age = bc-mu_firstbc;
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
         m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
@@ -607,9 +609,14 @@ int main(int argc, char* argv[]) {
   int m_xroad = 8;
   int m_bcwind = 8;
   double m_sig_art = 32.;
-  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
+  vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
+  //  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
   double chamber_eff = -1;
   string histograms = "histograms";
+
+  // coincidence params
+  int m_xthr = 2;
+  int m_uvthr = 2;
 
   bool bkgflag = false;
   bool pltflag = false;
@@ -646,6 +653,12 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-w",2)==0){
       m_bcwind = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-thrx",5)==0){
+      m_xthr = atoi(argv[i+1]);
+    }
+    if (strncmp(argv[i],"-thruv",6)==0){
+      m_uvthr = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-ch",3)==0){
       sscanf(argv[i+1],"%s", chamberType);
@@ -795,7 +808,12 @@ int main(int argc, char* argv[]) {
   hists["h_yres"]->StatOverflows(kTRUE);
   hists["h_xres"]->StatOverflows(kTRUE);
 
-  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag);
+  // multiplicity studies
+  hists["h_ntrig"] = new TH1F("h_ntrig", "h_ntrig", 101, -0.5, 100.5);
+  hists["h_ntrig_bkgonly"] = new TH1F("h_ntrig_bkgonly", "h_ntrig_bkgonly", 101, -0.5, 100.5);
+  hists_2d["h_ntrig_bc"] = new TH2D("h_ntrig_bc", "h_ntrig_bc", 49,-24.5,24.5, 101, -0.5, 100.5);
+
+  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -904,7 +922,10 @@ int main(int argc, char* argv[]) {
 
     vector<slope_t> m_slopes;
     int ntrigroads;
-    std::tie(ntrigroads, m_slopes) = finder(all_hits, m_roads, pltflag, ideal_vmm, ideal_addc, ideal_tp, i);
+    int ntrigroads_bkgonly = 0;
+
+    std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, pltflag, ideal_vmm, ideal_addc, ideal_tp, i);
+    hists["h_ntrig"]->Fill(ntrigroads);
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
@@ -914,11 +935,11 @@ int main(int argc, char* argv[]) {
     }
 
     // got a trigger, but none with real hits
-    if (m_slopes.size() == 0){
+    if (m_slopes.size() == 0 && ntrigroads != 0 ){
       nevent_allnoise++;
-      if (db)
-        cout << "Didn't trigger with real hits:( " << endl;
-      continue;
+//       if (db)
+//         cout << "Didn't trigger with real hits:( " << endl;
+//       continue;
     }
 
     slope_t myslope;
@@ -928,11 +949,22 @@ int main(int argc, char* argv[]) {
     myslope.yavg = 0.;
     myslope.imuonhits = 0;
     myslope.xmuon = 0;
-
+    myslope.age = -999;
     // pick road with the most muon x hits
     int most_hits = 0;
     vector<int> iroads = {};
-    for (unsigned int k = 0; k < m_slopes.size(); k++){
+    int myage = smallest_bc-bc_wind*3;
+    int ntrig_age = 0;
+
+    for (unsigned int k = 0; k < m_slopes.size() && myage < smallest_bc + bc_wind*3; k++){
+      while (m_slopes[k].age != myage){
+        hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
+        myage++;
+        ntrig_age = 0;
+      }
+      ntrig_age++;
+      if (m_slopes[k].imuonhits == 0)
+        ntrigroads_bkgonly++;
       if (m_slopes[k].imuonhits < most_hits)
         continue;
       if (m_slopes[k].imuonhits > most_hits)
@@ -940,6 +972,8 @@ int main(int argc, char* argv[]) {
       iroads.push_back(k);
       most_hits = m_slopes[k].imuonhits;
     }
+    hists["h_ntrig_bkgonly"]->Fill(ntrigroads_bkgonly);
+
     int the_chosen_one = iroads[ran->Integer((int)(iroads.size()))];
     myslope.count       = m_slopes[the_chosen_one].count;
     myslope.mxl         = m_slopes[the_chosen_one].mxl;

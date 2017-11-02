@@ -62,14 +62,14 @@ int strip(int bo, int vmm, int ch){
     return vmm*64+ch;
 }
 
-vector<Road*> create_roads(const GeoOctuplet& geometry){
+vector<Road*> create_roads(const GeoOctuplet& geometry, int m_xthr, int m_uvthr){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
   vector<Road*> m_roads;
   for (int i = 0; i < nroad; i++){
     Road* myroad = nullptr;
-    myroad = new Road(i, geometry);
+    myroad = new Road(i, geometry, m_xthr, m_uvthr);
     m_roads.push_back(myroad);
   }
   return m_roads;
@@ -200,7 +200,7 @@ int main() {
   newhit10 = new Hit(0, 206, strip(0,0,24), false, *GEOMETRY);
   hits.push_back(newhit10);
   
-  vector<Road*> m_roads = create_roads(*GEOMETRY);
+  vector<Road*> m_roads = create_roads(*GEOMETRY, 2, 2);
   
   vector<slope_t> m_slopes = finder(hits, m_roads);
   int ntrigroads = m_slopes.size();
@@ -255,7 +255,7 @@ int main() {
   
 
 
-  m_roads = create_roads(*GEOMETRY);
+  m_roads = create_roads(*GEOMETRY, 2, 2);
   
   m_slopes = finder(hits, m_roads);
   ntrigroads = m_slopes.size();
@@ -299,7 +299,7 @@ int main() {
   newhit12 = new Hit(0, 1369, strip(0,1,5), false, *GEOMETRY);
   hits.push_back(newhit12);
 
-  m_roads = create_roads(*GEOMETRY);
+  m_roads = create_roads(*GEOMETRY, 2, 2);
   
   m_slopes = finder(hits, m_roads);
   ntrigroads = m_slopes.size();
