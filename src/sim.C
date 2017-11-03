@@ -140,20 +140,24 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
 
   if (!uvrflag){
     // this is for 8 strip x-roads, i think
-    NSTRIPS_UP_UV = UVFACTOR*XROAD+NSTRIPS_UP_XX;
-    NSTRIPS_DN_UV = UVFACTOR*XROAD;
     NSTRIPS_UP_XX = 4;
     NSTRIPS_DN_XX = 0;
+    NSTRIPS_UP_UV = UVFACTOR*XROAD+NSTRIPS_UP_XX;
+    NSTRIPS_DN_UV = UVFACTOR*XROAD;
     // NSTRIPS_UP_UV = 80;
     // NSTRIPS_DN_UV = 80;
     // NSTRIPS_UP_XX = 8;
     // NSTRIPS_DN_XX = 8;
   }
   else{
-    NSTRIPS_UP_UV = 4;
+    NSTRIPS_UP_UV = 0;
     NSTRIPS_DN_UV = 0;
-    NSTRIPS_UP_XX = 4;
+    NSTRIPS_UP_XX = 0;
     NSTRIPS_DN_XX = 0;
+//     NSTRIPS_UP_UV = 4;
+//     NSTRIPS_DN_UV = 0;
+//     NSTRIPS_UP_XX = 4;
+//     NSTRIPS_DN_XX = 0;
   }
 }
 
@@ -166,6 +170,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
+  nroad = 100;
   vector<Road*> m_roads;
   for ( int i = 0; i < nroad; i++){
 
@@ -312,6 +317,11 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
   bc_start = bc_start - bc_wind*2;
   bc_end   = bc_end   + bc_wind*2;
 
+  // silly hack to look only in one window
+  bc_start = hits.front()->Age();
+  bc_end   = mu_firstbc+1;
+  //  std::cout << "start: " << bc_start<<", end: " << mu_firstbc << std::endl;
+
   // setup the roads
   for (unsigned int i = 0; i < roads.size(); i++)
     roads[i]->Reset();
@@ -415,8 +425,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
 
         int nmuonhits = roads[i]->NMuon();
 
-        if (nmuonhits < 1)
-          continue;
+//         if (nmuonhits < 1)
+//           continue;
 
         slope_t m_slope;
         
@@ -810,15 +820,17 @@ int main(int argc, char* argv[]) {
 
   // multiplicity studies
   hists["h_ntrig"] = new TH1F("h_ntrig", "h_ntrig", 101, -0.5, 100.5);
+  hists["h_nbkghits"] = new TH1F("h_nbkghits", "h_nbkghits", 2001, -0.5, 1000.5);
+  hists["h_nbkghits"]->StatOverflows(kTRUE);
   hists["h_ntrig_bkgonly"] = new TH1F("h_ntrig_bkgonly", "h_ntrig_bkgonly", 101, -0.5, 100.5);
   hists_2d["h_ntrig_bc"] = new TH2D("h_ntrig_bc", "h_ntrig_bc", 49,-24.5,24.5, 101, -0.5, 100.5);
+  hists_2d["h_ntrig_bkgonly_bc"] = new TH2D("h_ntrig_bkgonly_bc", "h_ntrig_bkgonly_bc", 49,-24.5,24.5, 101, -0.5, 100.5);
 
   vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr);
 
   time_t timer = time(NULL);
   time_t curr_time;
   for ( int i = 0; i < nevents; i++){
-
     if (nevents > 10){
       if (i % ((int)nevents/10) == 0){
         curr_time = time(NULL);
@@ -871,7 +883,7 @@ int main(int argc, char* argv[]) {
       art_bc[j] = (int)floor(art_time/25.);
       Hit* newhit = nullptr;
       newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
-      hits.push_back(newhit);
+      //hits.push_back(newhit);
       }
     }
 
@@ -900,6 +912,7 @@ int main(int argc, char* argv[]) {
       vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate);
       if (db)
         cout << "Nbkg hits: " << bkghits.size() << endl;
+      hists["h_nbkghits"]->Fill(bkghits.size());
       all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
     }
 
@@ -929,8 +942,6 @@ int main(int argc, char* argv[]) {
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
-      //      if (db)
-      cout << "no triggered roads?" << endl;
       continue;
     }
 
@@ -955,14 +966,20 @@ int main(int argc, char* argv[]) {
     vector<int> iroads = {};
     int myage = smallest_bc-bc_wind*3;
     int ntrig_age = 0;
+    int ntrig_bkgonly_age = 0;
 
-    for (unsigned int k = 0; k < m_slopes.size() && myage < smallest_bc + bc_wind*3; k++){
+    //    std::cout << "m_slopes size: " << m_slopes.size() << std::endl;
+    for (unsigned int k = 0; k < m_slopes.size(); k++){
       while (m_slopes[k].age != myage){
+        //        std::cout << "age of trig: " << m_slopes[k].age << " ,myage: " << myage << std::endl;
         hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
+        hists_2d["h_ntrig_bkgonly_bc"]->Fill(myage,ntrig_bkgonly_age);
         myage++;
         ntrig_age = 0;
+        ntrig_bkgonly_age = 0;
       }
       ntrig_age++;
+      ntrig_bkgonly_age++;
       if (m_slopes[k].imuonhits == 0)
         ntrigroads_bkgonly++;
       if (m_slopes[k].imuonhits < most_hits)
@@ -972,6 +989,15 @@ int main(int argc, char* argv[]) {
       iroads.push_back(k);
       most_hits = m_slopes[k].imuonhits;
     }
+    hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
+    hists_2d["h_ntrig_bkgonly_bc"]->Fill(myage,ntrig_bkgonly_age);
+
+    while (myage < smallest_bc+bc_wind*2){
+      hists_2d["h_ntrig_bc"]->Fill(myage,0);
+      hists_2d["h_ntrig_bkgonly_bc"]->Fill(myage,0);
+      myage++;
+    }
+
     hists["h_ntrig_bkgonly"]->Fill(ntrigroads_bkgonly);
 
     int the_chosen_one = iroads[ran->Integer((int)(iroads.size()))];
