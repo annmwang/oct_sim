@@ -415,8 +415,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
 
         int nmuonhits = roads[i]->NMuon();
 
-        if (nmuonhits < 1)
-          continue;
+//         if (nmuonhits < 1)
+//           continue;
 
         slope_t m_slope;
         
