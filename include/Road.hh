@@ -23,6 +23,9 @@ public:
   ~Road();
 
   int iRoad();
+  int iRoadx();
+  int iRoadu();
+  int iRoadv();
   int Count();
   void Reset();
   int Offset(int ib);
@@ -105,6 +108,18 @@ inline Road::~Road() {}
 
 inline int Road::iRoad(){
   return m_iroad;
+}
+
+inline int Road::iRoadx(){
+  return m_iroadx;
+}
+
+inline int Road::iRoadu(){
+  return m_iroadu;
+}
+
+inline int Road::iRoadv(){
+  return m_iroadv;
 }
 
 inline int Road::Count(){

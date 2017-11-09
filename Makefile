@@ -16,9 +16,13 @@ HH_FILES := $(wildcard include/*.hh)
 OBJ_FILES := $(addprefix $(OUTOBJ),$(notdir $(CC_FILES:.cc=.o)))
 DICT_FILES := $(wildcard include/*.pcm)
 
-all: sim testGBT
+all: VectorDict.cxx sim testGBT
 
-sim:  $(SRCDIR)sim.C $(OBJ_FILES) $(HH_FILES) 
+VectorDict.cxx: $(INCLUDEDIR)VectorDict.hh
+	rootcint -f VectorDict.cxx -c $(CXXFLAGS) -p $ $<
+	touch VectorDict.cxx
+
+sim:  $(SRCDIR)sim.C $(OBJ_FILES) $(HH_FILES) $(DICT_FILES)
 	$(CXX) $(CXXFLAGS) -o sim $ $< $(GLIBS) 
 	touch sim
 
@@ -35,3 +39,5 @@ clean:
 	rm -rf *.dSYM
 	rm -f sim
 	rm -f testGBT 
+	rm -f VectorDict.cxx
+	rm -f VectorDict_rdict.pcm
