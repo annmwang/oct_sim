@@ -150,14 +150,14 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
     // NSTRIPS_DN_XX = 8;
   }
   else{
-    NSTRIPS_UP_UV = 0;
+    // NSTRIPS_UP_UV = 0;
+    // NSTRIPS_DN_UV = 0;
+    // NSTRIPS_UP_XX = 0;
+    // NSTRIPS_DN_XX = 0;
+    NSTRIPS_UP_UV = 4;
     NSTRIPS_DN_UV = 0;
-    NSTRIPS_UP_XX = 0;
+    NSTRIPS_UP_XX = 4;
     NSTRIPS_DN_XX = 0;
-//     NSTRIPS_UP_UV = 4;
-//     NSTRIPS_DN_UV = 0;
-//     NSTRIPS_UP_XX = 4;
-//     NSTRIPS_DN_XX = 0;
   }
 }
 
@@ -170,7 +170,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
-  nroad = 100;
+  //nroad = 201;
   vector<Road*> m_roads;
   for ( int i = 0; i < nroad; i++){
 
@@ -318,8 +318,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
   bc_end   = bc_end   + bc_wind*2;
 
   // silly hack to look only in one window
-  bc_start = hits.front()->Age();
-  bc_end   = mu_firstbc+1;
+  // bc_start = hits.front()->Age();
+  // bc_end   = mu_firstbc+1;
   //  std::cout << "start: " << bc_start<<", end: " << mu_firstbc << std::endl;
 
   // setup the roads
@@ -991,7 +991,7 @@ int main(int argc, char* argv[]) {
     }
     hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
     hists_2d["h_ntrig_bkgonly_bc"]->Fill(myage,ntrig_bkgonly_age);
-
+    myage++;
     while (myage < smallest_bc+bc_wind*2){
       hists_2d["h_ntrig_bc"]->Fill(myage,0);
       hists_2d["h_ntrig_bkgonly_bc"]->Fill(myage,0);
