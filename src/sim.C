@@ -224,36 +224,6 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   return make_tuple(x,y);
 }
 
-// vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
-
-//   double plane_area = (xhigh-xlow) * (yhigh-ylow);
-//   vector<Hit*> bkghits;
-
-  
-//   int noise_window = bc_wind * 3;
-//   int start_noise = start_bc - bc_wind;
-//   int end_noise = start_bc + bc_wind * 2 -1;
-
-//   //assume uniform distribution of background - correct for noise
-//   double bkgrate_bc = bkgrate * (25*pow(10,-9));
-//   double expbkg = bkgrate_bc * noise_window  * plane_area;
-
-
-//   for ( int j = 0; j < NPLANES; j++){
-//     //int nbkg = expbkg;
-//     int nbkg = ran->Poisson(expbkg);
-//     double x, y;
-//     for ( int k = 0; k < nbkg; k++){
-//       x = ran->Uniform(xlow, xhigh);
-//       y = ran->Uniform(ylow, yhigh);
-//       Hit* newhit = nullptr;
-//       newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), x,y,true, geometry);
-//       bkghits.push_back(newhit);
-//     }
-//   }
-//   return bkghits;
-// }
-
 vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
 
   vector<Hit*> bkghits;
@@ -744,6 +714,8 @@ int main(int argc, char* argv[]) {
   cout << endl;
   printf("\r >> Using UV roads: %s", (uvrflag) ? "true" : "false");
   cout << endl;
+  printf("\r >> Using thresholds (x, uv): (%d, %d)", m_xthr, m_uvthr);
+  cout << endl;
   for (unsigned int i = 0; i < mm_eff.size(); i++){
     printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
     cout << endl;
@@ -789,6 +761,7 @@ int main(int argc, char* argv[]) {
 
   }
 
+  // geometry stuff
   double xlen = xhigh-xlow;
   double ylen = yhigh-ylow; 
 

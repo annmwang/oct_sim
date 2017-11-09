@@ -400,7 +400,7 @@ int Road::NUV(){
 
 bool Road::Mature(int wind){
   for (unsigned int i = 0; i < m_hits.size(); i++){
-    if (m_hits[i].Age() == wind)
+    if (m_hits[i].Age() == (wind-1))
       return true;
   }
   return false;
