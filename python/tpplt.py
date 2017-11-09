@@ -41,8 +41,24 @@ def main(argv):
     hists["h_ntrig"] = ifile.Get("histograms/h_ntrig")
     hists["h_ntrig_bkgonly"] = ifile.Get("histograms/h_ntrig_bkgonly")
 
+
+    nx = hists["h_ntrig"].GetNbinsX()
+    ntrig = 0
+    for i in range(nx):
+        ntrig += i*hists["h_ntrig"].GetBinContent(i+1)
+    print "num triggers:",ntrig
+    print "% events with 1+ trigger:", (hists["h_ntrig"].GetEntries()-hists["h_ntrig"].GetBinContent(1))/hists["h_ntrig"].GetEntries()*100
+
     hists_2d["h_xres_nxmuon"] = ifile.Get("histograms/h_xres_nxmuon")
     hists_2d["h_ntrig_bc"] = ifile.Get("histograms/h_ntrig_bc")
+
+    ntrig = 0
+    h_ntrig_16 = hists_2d["h_ntrig_bc"].ProjectionY("h_ntrig_16",25,40)
+    for i in range(h_ntrig_16.GetNbinsX()):
+        ntrig += i*h_ntrig_16.GetBinContent(i+1)
+    print "from BC 0 to 15 num triggers:",ntrig
+
+
 #    hists_2d["h_xres_nxmaxmuon"] = ifile.Get("histograms/h_xres_nxmaxmuon")
 
     hist_titles["h_mxres"] = "#Delta #theta (mrad)"
