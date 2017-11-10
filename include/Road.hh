@@ -284,7 +284,7 @@ void Road::Increment_Age(int wind){
   std::vector<int> old_ihits;
   for (unsigned int j = 0; j < m_hits.size(); j++){
     m_hits[j].SetAge(m_hits[j].Age()+1);
-    if (m_hits[j].Age() > wind){
+    if (m_hits[j].Age() > (wind-1)){
       old_ihits.push_back(j);
       nlost++;
     }
