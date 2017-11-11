@@ -163,7 +163,7 @@ inline bool Road::Contains(const Hit& hit, int roadsize, int uvfactor) {
   shigh = roadsize*(m_iroad+1);
   int strip = hit.Channel();
   strip += Offset(hit.MMFE8Index());
-  if (strip >= slow && strip <= shigh)
+  if (strip >= slow && strip < shigh)
     return true;
   else
     return false;
@@ -183,7 +183,7 @@ inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize, int uvfactor)
   strip += Offset(hit.MMFE8Index());
 //   std::cout << "strip from iboard, bcid: " << strip << ", "<< hit.MMFE8Index() << ", " << std::endl; 
 //   std::cout << "looking @ iRoad " << iRoad() <<" ["<<slow <<", " << shigh << "]"<< std::endl;
-  if (strip >= slow && strip <= shigh)
+  if (strip >= slow && strip < shigh)
     return true;
   else
     return false;
@@ -217,7 +217,7 @@ inline bool Road::Contains_Neighbors(const Hit& hit, int roadsize,
   int strip = hit.Channel();
   strip += Offset(hit.MMFE8Index());
 
-  return (strip >= slow && strip <= shigh);
+  return (strip >= slow && strip < shigh);
 }
 
 inline void Road::Add_Hits(std::vector<Hit*> & hits, int roadsize, int uvfactor){
