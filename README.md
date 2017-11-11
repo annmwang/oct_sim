@@ -28,3 +28,4 @@ Configurable parameters include:
 * [-e] chamber efficiency (0 to 1) :: default 0.9
 * [-ideal-vmm] allow the VMM to always pick the signal hit :: default OFF
 * [-ideal-tp] allow the TP to always pick the signal hit :: default OFF
+* [-seed] set the seed for TRandom3 :: default: seed is not set
