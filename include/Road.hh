@@ -23,6 +23,9 @@ public:
   ~Road();
 
   int iRoad();
+  int iRoadx();
+  int iRoadu();
+  int iRoadv();
   int Count();
   void Reset();
   int Offset(int ib);
@@ -105,6 +108,18 @@ inline Road::~Road() {}
 
 inline int Road::iRoad(){
   return m_iroad;
+}
+
+inline int Road::iRoadx(){
+  return m_iroadx;
+}
+
+inline int Road::iRoadu(){
+  return m_iroadu;
+}
+
+inline int Road::iRoadv(){
+  return m_iroadv;
 }
 
 inline int Road::Count(){
@@ -269,7 +284,7 @@ void Road::Increment_Age(int wind){
   std::vector<int> old_ihits;
   for (unsigned int j = 0; j < m_hits.size(); j++){
     m_hits[j].SetAge(m_hits[j].Age()+1);
-    if (m_hits[j].Age() > wind){
+    if (m_hits[j].Age() > (wind-1)){
       old_ihits.push_back(j);
       nlost++;
     }
@@ -385,7 +400,7 @@ int Road::NUV(){
 
 bool Road::Mature(int wind){
   for (unsigned int i = 0; i < m_hits.size(); i++){
-    if (m_hits[i].Age() == wind)
+    if (m_hits[i].Age() == (wind-1))
       return true;
   }
   return false;

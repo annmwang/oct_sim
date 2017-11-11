@@ -33,6 +33,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <time.h>
+#include "VectorDict.cxx"
 
 using namespace std;
 
@@ -69,6 +70,8 @@ string warning = "\033[38;5;227;48;5;232m";
 struct slope_t {
   int count;
   int iroad;
+  int iroadu;
+  int iroadv;
   int imuonhits;
   int uvbkg;
   int xbkg;
@@ -220,36 +223,6 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   }    
   return make_tuple(x,y);
 }
-
-// vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
-
-//   double plane_area = (xhigh-xlow) * (yhigh-ylow);
-//   vector<Hit*> bkghits;
-
-  
-//   int noise_window = bc_wind * 3;
-//   int start_noise = start_bc - bc_wind;
-//   int end_noise = start_bc + bc_wind * 2 -1;
-
-//   //assume uniform distribution of background - correct for noise
-//   double bkgrate_bc = bkgrate * (25*pow(10,-9));
-//   double expbkg = bkgrate_bc * noise_window  * plane_area;
-
-
-//   for ( int j = 0; j < NPLANES; j++){
-//     //int nbkg = expbkg;
-//     int nbkg = ran->Poisson(expbkg);
-//     double x, y;
-//     for ( int k = 0; k < nbkg; k++){
-//       x = ran->Uniform(xlow, xhigh);
-//       y = ran->Uniform(ylow, yhigh);
-//       Hit* newhit = nullptr;
-//       newhit = new Hit(j, start_noise+ran->Integer(end_noise+1-start_noise), x,y,true, geometry);
-//       bkghits.push_back(newhit);
-//     }
-//   }
-//   return bkghits;
-// }
 
 vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
 
@@ -422,6 +395,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
         
         m_slope.count = roads[i]->Count();
         m_slope.iroad = roads[i]->iRoad();
+        m_slope.iroadu = roads[i]->iRoadu();
+        m_slope.iroadv = roads[i]->iRoadv();
         m_slope.imuonhits = nmuonhits;
         m_slope.uvbkg = roads[i]->UV_bkg();
         m_slope.xbkg = roads[i]->X_bkg();
@@ -624,6 +599,7 @@ int main(int argc, char* argv[]) {
   bool ideal_tp   = false;
   bool ideal_vmm  = false;
   bool ideal_addc = false;
+  bool write_tree = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -697,6 +673,9 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-seed", 5)==0){
       ran->SetSeed( atoi(argv[i+1]) );
     }
+    if (strncmp(argv[i],"-tree", 5)==0){
+      write_tree = true;
+    }
   }
   if (!b_out){
     cout << "Error at Input: please specify output file (-o flag)" << endl;
@@ -735,6 +714,8 @@ int main(int argc, char* argv[]) {
   cout << endl;
   printf("\r >> Using UV roads: %s", (uvrflag) ? "true" : "false");
   cout << endl;
+  printf("\r >> Using thresholds (x, uv): (%d, %d)", m_xthr, m_uvthr);
+  cout << endl;
   for (unsigned int i = 0; i < mm_eff.size(); i++){
     printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
     cout << endl;
@@ -750,6 +731,37 @@ int main(int argc, char* argv[]) {
   TFile* fout = new TFile(outputFileName, "RECREATE");
   fout->mkdir("event_displays");
 
+  // define output ntuple
+
+  TTree* tree = new TTree("gingko","gingko");
+  
+  int EventNum = 0;
+  int Ntriggers;
+
+  vector<int> iRoad_x;
+  vector<int> iRoad_u;
+  vector<int> iRoad_v;
+
+  vector<vector<int>> Hit_strips;
+  vector<vector<int>> Hit_planes;
+  vector<vector<int>> Hit_ages;
+  vector<int> trigger_BC;
+
+  if (write_tree) {
+
+    tree->Branch("EventNum",  &EventNum);
+    tree->Branch("Ntriggers",  &Ntriggers);
+    tree->Branch("iRoad_x", &iRoad_x);
+    tree->Branch("iRoad_u", &iRoad_u);
+    tree->Branch("iRoad_v", &iRoad_v);
+    tree->Branch("Hit_strips", &Hit_strips);
+    tree->Branch("Hit_planes", &Hit_planes);
+    tree->Branch("Hit_ages", &Hit_ages);
+    tree->Branch("trigger_BC", &trigger_BC);
+
+  }
+
+  // geometry stuff
   double xlen = xhigh-xlow;
   double ylen = yhigh-ylow; 
 
@@ -818,6 +830,17 @@ int main(int argc, char* argv[]) {
   time_t timer = time(NULL);
   time_t curr_time;
   for ( int i = 0; i < nevents; i++){
+
+    if (write_tree){
+      EventNum++;
+      iRoad_x.clear();
+      iRoad_u.clear();
+      iRoad_v.clear();
+
+      Hit_strips.clear();
+      Hit_planes.clear();
+      trigger_BC.clear();
+    }
 
     if (nevents > 10){
       if (i % ((int)nevents/10) == 0){
@@ -924,8 +947,12 @@ int main(int argc, char* argv[]) {
     int ntrigroads;
     int ntrigroads_bkgonly = 0;
 
-    std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, pltflag, ideal_vmm, ideal_addc, ideal_tp, i);
+
+    std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i);
     hists["h_ntrig"]->Fill(ntrigroads);
+    if (write_tree)
+      Ntriggers = ntrigroads;
+
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0 && muon_trig_ok){
@@ -956,6 +983,10 @@ int main(int argc, char* argv[]) {
     int myage = smallest_bc-bc_wind*3;
     int ntrig_age = 0;
 
+    vector <int> slopehits_ch;
+    vector <int> slopehits_planes;
+    vector <int> slopehits_ages;
+
     for (unsigned int k = 0; k < m_slopes.size() && myage < smallest_bc + bc_wind*3; k++){
       while (m_slopes[k].age != myage){
         hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
@@ -963,6 +994,28 @@ int main(int argc, char* argv[]) {
         ntrig_age = 0;
       }
       ntrig_age++;
+      
+      if (write_tree) {
+        iRoad_x.push_back(m_slopes[k].iroad);
+        iRoad_u.push_back(m_slopes[k].iroadu);
+        iRoad_v.push_back(m_slopes[k].iroadv);
+        
+        slopehits_ch.clear();
+        slopehits_ages.clear();
+        slopehits_planes.clear();
+        
+        for (unsigned int n = 0; n < m_slopes[k].slopehits.size(); n++) {
+          slopehits_ch.push_back(m_slopes[k].slopehits[n].Channel());
+          slopehits_planes.push_back(m_slopes[k].slopehits[n].MMFE8Index());
+          slopehits_ages.push_back(m_slopes[k].slopehits[n].Age());
+        }
+        
+        trigger_BC.push_back(m_slopes[k].age);
+        Hit_strips.push_back(slopehits_ch);
+        Hit_planes.push_back(slopehits_planes);
+        Hit_ages.push_back(slopehits_ages);
+      }
+
       if (m_slopes[k].imuonhits == 0)
         ntrigroads_bkgonly++;
       if (m_slopes[k].imuonhits < most_hits)
@@ -1028,6 +1081,8 @@ int main(int argc, char* argv[]) {
     if (m_slopes.size() > 0 && muon_trig_ok)
       hists_2d["h_xy_trig"]->Fill(xmuon, ymuon);
 
+    tree->Fill();
+
   }
   cout << endl;
   cout << endl;
@@ -1070,6 +1125,8 @@ int main(int argc, char* argv[]) {
   hists_2d["h_xy_eff"]->Divide(hists_2d["h_xy_trig"], hists_2d["h_xy_all"], 1.0, 1.0, "B");
 
   fout->cd();
+  if (write_tree)
+    tree->Write();
   fout->mkdir(histograms.c_str());
   fout->cd(histograms.c_str());
   
