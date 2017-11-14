@@ -28,3 +28,7 @@ Configurable parameters include:
 * [-e] chamber efficiency (0 to 1) :: default 0.9
 * [-ideal-vmm] allow the VMM to always pick the signal hit :: default OFF
 * [-ideal-tp] allow the TP to always pick the signal hit :: default OFF
+* [-seed] set the seed for TRandom3 :: default none (seed is not set)
+* [-thrx] set the X coincidence threshold :: default 2
+* [-thruv] set the UV coincidence threshold :: default 2
+* [-tree] write a TTree of hits and triggers :: default OFF
