@@ -153,6 +153,10 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
     // NSTRIPS_DN_XX = 8;
   }
   else{
+    // NSTRIPS_UP_UV = 0;
+    // NSTRIPS_DN_UV = 0;
+    // NSTRIPS_UP_XX = 0;
+    // NSTRIPS_DN_XX = 0;
     NSTRIPS_UP_UV = 4;
     NSTRIPS_DN_UV = 0;
     NSTRIPS_UP_XX = 4;
@@ -284,6 +288,10 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
   bc_end   = hits.back()->Age();
   bc_start = bc_start - bc_wind*2;
   bc_end   = bc_end   + bc_wind*2;
+
+  // silly hack to look only in one window                                                                        
+  bc_start = hits.front()->Age();
+  bc_end   = mu_firstbc;
 
   // setup the roads
   for (unsigned int i = 0; i < roads.size(); i++)
@@ -894,7 +902,7 @@ int main(int argc, char* argv[]) {
       art_bc[j] = (int)floor(art_time/25.);
       Hit* newhit = nullptr;
       newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
-      hits.push_back(newhit);
+      //hits.push_back(newhit);
       }
     }
 
@@ -1024,6 +1032,12 @@ int main(int argc, char* argv[]) {
         iroads.clear();
       iroads.push_back(k);
       most_hits = m_slopes[k].imuonhits;
+    }
+    hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
+    myage++;
+    while (myage < smallest_bc+bc_wind*2){
+      hists_2d["h_ntrig_bc"]->Fill(myage,0);
+      myage++;
     }
     hists["h_ntrig_bkgonly"]->Fill(ntrigroads_bkgonly);
 
