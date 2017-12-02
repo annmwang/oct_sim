@@ -20,7 +20,7 @@ Configurable parameters include:
 * [-x] road size :: default 8 strips
 * [-w] BC window size :: default 8 BC
 * [-ch] chamber type
-* [-b] bkg rate in Hz/strip
+* [-b] bkg rate in Hz/strip. Use -1 to get rate predicted at HL-LHC
 * [-p] plotting :: default OFF
 * [-o] output file :: 
 * [-uvr] turn on UV roads :: default OFF
