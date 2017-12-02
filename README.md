@@ -12,7 +12,7 @@ source hero_setup.sh
 ```{r, engine='bash', count_lines}
 make
 ./sim 
-./sim -n 100 -ch <chamber type> -b <bkg rate in Hz/strip> -o output.root
+./sim -n 100 -ch <chamber type> -b <bkg rate in Hz/strip> -o output.root -uvr -thrx 3 -thruv 3
 ```
 Configurable parameters include:
 * [-n] nevents generated 
