@@ -598,7 +598,7 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
 int main(int argc, char* argv[]) {
 
   int nevents = -1;
-  int bkgrate = -1; // Hz per strip
+  int bkgrate = 0; // Hz per strip
 
   int m_xroad = 8;
   int m_bcwind = 8;
