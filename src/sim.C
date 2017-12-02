@@ -199,6 +199,24 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr
   return m_roads;
 }
 
+double predicted_rate(int strip, string chamber) {
+
+  if (chamber != "large" && chamber != "small"){
+    cerr << "predicted_rate doesnt understand this chamber: " << chamber << endl;
+    return -1.0;
+  }
+  int large = (chamber == "large");
+  double pitch = 0.4;
+  double offset = large ? 923.0 : 895.0;
+  double r = offset + pitch*(double)(strip);
+
+  // mm->cm
+  r = r/10;
+
+  if (large) return (-9.938824) + (6288.351422)/r +  (45942.902843)/pow(r, 2);
+  else       return (-5.018321) + (3396.877744)/r + (164524.202988)/pow(r, 2);
+}
+
 tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
 
 //   double x = ran->Uniform(xlow,xhigh);
@@ -224,7 +242,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   return make_tuple(x,y);
 }
 
-vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate){
+vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate, string chamber){
 
   vector<Hit*> bkghits;
 
@@ -234,12 +252,14 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   // int end_noise = start_bc + bc_wind * 2 -1;
 
   //assume uniform distribution of background - correct for noise
-  double bkgrate_bc = bkgrate * (25*pow(10,-9));
-  double bkg_prob = bkgrate_bc*noise_window;
+  double time_window = noise_window * 25*pow(10,-9);
+  double bkg_prob = bkgrate * time_window;
   for ( int j = 0; j < NPLANES; j++){
     //int nbkg = expbkg;
     for ( int k = 0; k < NSTRIPS; k++){
       double prob = ran->Uniform(0,1.);
+      if (bkgrate == -1)
+        bkg_prob = predicted_rate(k, chamber) * time_window;
       if (prob < bkg_prob){
         Hit* newhit = nullptr;
         newhit = new Hit(j, start_noise+ran->Integer(noise_window), k, true, geometry);
@@ -575,11 +595,10 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
   c1->Write();
 }
 
-
 int main(int argc, char* argv[]) {
 
   int nevents = -1;
-  int bkgrate = -1; // Hz per strip
+  int bkgrate = 0; // Hz per strip
 
   int m_xroad = 8;
   int m_bcwind = 8;
@@ -920,7 +939,7 @@ int main(int argc, char* argv[]) {
     
     vector<Hit*> all_hits = hits;    
     if (bkgflag){
-      vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate);
+      vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate, string(chamberType));
       if (db)
         cout << "Nbkg hits: " << bkghits.size() << endl;
       all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
