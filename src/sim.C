@@ -213,8 +213,12 @@ double predicted_rate(int strip, string chamber) {
   // mm->cm
   r = r/10;
 
-  if (large) return (-9.938824) + (6288.351422)/r +  (45942.902843)/pow(r, 2);
-  else       return (-5.018321) + (3396.877744)/r + (164524.202988)/pow(r, 2);
+  double rate = 0.0;
+  if (large) rate = (-9.938824) + (6288.351422)/r +  (45942.902843)/pow(r, 2);
+  else       rate = (-5.018321) + (3396.877744)/r + (164524.202988)/pow(r, 2);
+
+  // kHz->Hz
+  return rate*1000;
 }
 
 tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
