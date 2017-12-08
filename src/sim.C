@@ -179,7 +179,7 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr
     Road* myroad = nullptr;
     myroad = new Road(&geometry, m_xthr, m_uvthr, i);
     m_roads.push_back(myroad);
-    
+
     int nuv = 0;
     if (uvrflag)
       nuv = UVFACTOR;
@@ -232,8 +232,10 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
 
   vector<Hit*> bkghits;
 
-  int noise_window = bc_wind * 3;
-  int start_noise = start_bc - bc_wind;
+  int noise_window = bc_wind * 5;
+  int start_noise = start_bc - bc_wind * 2; // this takes into account overwriting tp hits for a plane+road
+  //int start_noise = start_bc - bc_wind;
+
   // int end_noise = start_noise + noise_window - 1;
   // int end_noise = start_bc + bc_wind * 2 -1;
 
@@ -292,6 +294,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
   // silly hack to look only in one window                                                                        
   bc_start = hits.front()->Age();
   bc_end   = mu_firstbc;
+  bc_end   = mu_firstbc + 16;
 
   // setup the roads
   for (unsigned int i = 0; i < roads.size(); i++)
@@ -381,7 +384,9 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
       roads[i]->Increment_Age(bc_wind);
       roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV, ideal_tp);
 
-      if (roads[i]->Coincidence(bc_wind)){
+      //if (roads[i]->Coincidence(bc_wind) && bc == (mu_firstbc - 1)){
+      if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1)){
+	//if (roads[i]->Coincidence(bc_wind)){
         if (db){
           cout << "---------------------------" << endl;
           cout << "FOUND COINCIDENCE @ BC " << bc << endl;
@@ -608,6 +613,7 @@ int main(int argc, char* argv[]) {
   bool ideal_vmm  = false;
   bool ideal_addc = false;
   bool write_tree = false;
+  bool bkgonly = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -618,6 +624,7 @@ int main(int argc, char* argv[]) {
     cout << "Example:   ./sim -n 100 -ch <chamber type> -b <bkg rate in kHz/strip> -o output.root" << endl;
     cout << "Example:   ./sim -n 100 -ch <chamber type> -b <bkg rate in Hz/strip> -p <make event displays> -o output.root" << endl;
     cout << "Other options include: -w <bc_wind> -sig <art res (ns)>" << endl;
+    cout << "If art res = 0, then we do bkg only" << endl;
     return 0;
   }
 
@@ -650,6 +657,8 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-sig",4)==0){
       m_sig_art = atof(argv[i+1]);
+      if ((int)m_sig_art == 0)
+	bkgonly = true;
     }
     if (strncmp(argv[i],"-b",2)==0){
       bkgrate = atoi(argv[i+1]);
@@ -709,6 +718,8 @@ int main(int argc, char* argv[]) {
   cout << endl;
   cout << endl;
   printf("\r >> plot flag: %s", pltflag ? "true" : "false");
+  cout << endl;
+  printf("\r >> bkgonly flag: %s", bkgonly ? "true" : "false");
   cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
@@ -887,7 +898,7 @@ int main(int argc, char* argv[]) {
     int n_x2 = 0;
     
     double art_time;
-  
+    
     for ( int j = 0; j < NPLANES; j++){
       if (oct_hitmask[j] == 1){
         if (j < 2)
@@ -902,7 +913,8 @@ int main(int argc, char* argv[]) {
       art_bc[j] = (int)floor(art_time/25.);
       Hit* newhit = nullptr;
       newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
-      //hits.push_back(newhit);
+      if (!bkgonly)
+	hits.push_back(newhit);
       }
     }
 
@@ -966,6 +978,8 @@ int main(int argc, char* argv[]) {
     if (ntrigroads == 0 && muon_trig_ok){
       //      if (db)
       cout << "no triggered roads?" << endl;
+      if (write_tree)
+	tree->Fill();
       continue;
     }
 
@@ -995,7 +1009,7 @@ int main(int argc, char* argv[]) {
     vector <int> slopehits_planes;
     vector <int> slopehits_ages;
 
-    for (unsigned int k = 0; k < m_slopes.size() && myage < smallest_bc + bc_wind*3; k++){
+    for (unsigned int k = 0; k < m_slopes.size(); k++){
       while (m_slopes[k].age != myage){
         hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
         myage++;

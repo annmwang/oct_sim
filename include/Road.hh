@@ -295,6 +295,7 @@ void Road::Increment_Age(int wind){
 }
 
 bool Road::Coincidence(int wind){
+  //return Horiz_ok() && Stereo_ok();
   return Horiz_ok() && Stereo_ok() && Mature(wind);
 }
 
@@ -330,6 +331,8 @@ bool Road::Stereo_ok(){
     if (m_hits[i].MMFE8Index() == 3 || m_hits[i].MMFE8Index() == 5)
       nv++;
   }
+  if (m_uvthr == 0)
+    return true;
   if (nu > 0 && nv > 0 && (nu+nv) >= m_uvthr)
     return true;
   return false;
@@ -400,8 +403,10 @@ int Road::NUV(){
 
 bool Road::Mature(int wind){
   for (unsigned int i = 0; i < m_hits.size(); i++){
+    //if ( (m_hits[i].Age() == (wind-1)) && ( m_hits[i].MMFE8Index() < 2 || m_hits[i].MMFE8Index() > 5 ) )
+    //  return true;
     if (m_hits[i].Age() == (wind-1))
-      return true;
+      return true;  
   }
   return false;
 }
