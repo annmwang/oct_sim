@@ -291,10 +291,10 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
   bc_start = bc_start - bc_wind*2;
   bc_end   = bc_end   + bc_wind*2;
 
-  // silly hack to look only in one window                                                                        
-  bc_start = hits.front()->Age();
-  bc_end   = mu_firstbc;
-  bc_end   = mu_firstbc + 16;
+  // // silly hack to look only in one window                                                                        
+  // bc_start = hits.front()->Age();
+  // bc_end   = mu_firstbc;
+  // bc_end   = mu_firstbc + 16;
 
   // setup the roads
   for (unsigned int i = 0; i < roads.size(); i++)
