@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
-# combines GBT and tp root files to one
-# cannibalized code from Alex
+# some plotting for the ttree produced by oct_sim
 
 import ROOT, sys
 import time as tm
