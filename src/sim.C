@@ -96,7 +96,7 @@ bool compare_second(std::pair<int, double> a, std::pair<int, double> b){
   return (a.second < b.second);
 }
 
-void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uvrflag){
+void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uvrflag, bool trapflag){
   // function to set parameters in a smart way
 
   if (chamber == "small"){
@@ -105,7 +105,7 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
     xlow = 0.;
     xhigh = NSTRIPS*0.4-0.2;
     ylow = 0.;
-    yhigh = 500.;
+    yhigh = trapflag ? 1821. : 500.;
   }
   else if (chamber == "large"){
 
@@ -803,7 +803,7 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad, uvrflag);
+  set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad, uvrflag, trapflag);
   
   cout << endl;
   cout << blue << "--------------" << ending << endl;
@@ -826,6 +826,8 @@ int main(int argc, char* argv[]) {
   printf("\r >> Assuming chamber size: (%4.1f,%4.1f) in mm",xhigh-xlow, yhigh-ylow);
   cout << endl;
   printf("\r >> Using UV roads: %s", (uvrflag) ? "true" : "false");
+  cout << endl;
+  printf("\r >> Using trapezoidal geometry: %s", (trapflag) ? "true" : "false");
   cout << endl;
   printf("\r >> Using thresholds (x, uv): (%d, %d)", m_xthr, m_uvthr);
   cout << endl;

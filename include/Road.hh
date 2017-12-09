@@ -142,6 +142,11 @@ inline int Road::Offset(int ib){
     offsets[1] = -16; 
     offsets[2] = 17;
   }
+  if (m_geometry->Get(0).ylen() == 1821){
+    offsets[0] = 0;
+    offsets[1] = -59; 
+    offsets[2] = 60;
+  }
   if (m_geometry->Get(0).ylen() == 2200){
     offsets[0] = 0;
     offsets[1] = -72; 
