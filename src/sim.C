@@ -56,7 +56,7 @@ int NSTRIPS_UP_UV, NSTRIPS_DN_UV;
 int NSTRIPS_UP_XX, NSTRIPS_DN_XX;
 
 int bc_wind;
-double sig_art;
+int sig_art;
 
 double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
 
@@ -164,12 +164,55 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
   }
 }
 
+int inside_trapezoid(double x, double y, double inner_radius, double outer_radius, double length, double base_width, double top_width) {
+  double slope  = (outer_radius - inner_radius) / ((top_width - base_width) / 2.0);
+  double offset = inner_radius - (slope * base_width / 2.0);
+  if (x > outer_radius)          return 0; // top
+  if (x < inner_radius)          return 0; // bottom
+  if (y >  (x - offset) / slope) return 0; // right
+  if (y < -(x - offset) / slope) return 0; // left
+  return 1;
+}
+
+int fiducial(double x, double y, string chamber) {
+
+  if (chamber != "large" && chamber != "small"){
+    cerr << "fiducial doesnt understand this chamber: " << chamber << endl;
+    return -1;
+  }
+  int large = (chamber == "large");
+
+  double NSW_MM1_InnerRadius = 0; // chambers starts at 0 // large ? 923.0  : 895.0;
+  double NSW_MM1_Length      = large ? 2310.0 : 2210.0;
+  double NSW_MM2_Length      = large ? 1410.0 : 1350.0;
+  double NSW_MM1_baseWidth   = large ? 640.0  : 500.0;
+  double NSW_MM1_topWidth    = large ? 2008.5 : 1319.2;
+  double NSW_MM2_baseWidth   = large ? 2022.8 : 1321.1;
+  double NSW_MM2_topWidth    = large ? 2220.0 : 1821.5;
+  double NSW_MM1_outerRadius = NSW_MM1_InnerRadius + NSW_MM1_Length;
+  double NSW_MM2_InnerRadius = NSW_MM1_outerRadius;
+  double NSW_MM2_outerRadius = NSW_MM2_InnerRadius + NSW_MM2_Length;
+
+  if (inside_trapezoid(x, y - (yhigh+ylow)/2.0,
+                       NSW_MM1_InnerRadius,
+                       NSW_MM1_outerRadius,
+                       NSW_MM1_Length,
+                       NSW_MM1_baseWidth,
+                       NSW_MM1_topWidth)) return 1;
+  if (inside_trapezoid(x, y - (yhigh+ylow)/2.0,
+                       NSW_MM2_InnerRadius,
+                       NSW_MM2_outerRadius,
+                       NSW_MM2_Length,
+                       NSW_MM2_baseWidth,
+                       NSW_MM2_topWidth)) return 1;
+  return 0;
+}
 
 tuple<double,double> cosmic_angle(){
   return make_tuple(0.,0.);
 }
 
-vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr, int m_uvthr){
+vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr, int m_uvthr, string chamber, bool trapflag){
   if (NSTRIPS % XROAD != 0)
     cout << "Not divisible!" << endl;
   int nroad = NSTRIPS/XROAD;
@@ -200,7 +243,23 @@ vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr
       m_roads.push_back(myroad_5);
     }
   }
-  return m_roads;
+
+  if (trapflag){
+    vector<Road*> m_roads_fiducial;
+    for (auto road: m_roads){
+      for (int corner = 0; corner <= 3; corner++){
+        double x, y;
+        std::tie(x, y) = road->CornerXY(corner, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
+        if (fiducial(x, y, chamber)){
+          m_roads_fiducial.push_back(road);
+          break;
+        }
+      }
+    }
+    return m_roads_fiducial;
+  }
+  else
+    return m_roads;
 }
 
 double predicted_rate(int strip, string chamber) {
@@ -225,14 +284,22 @@ double predicted_rate(int strip, string chamber) {
   return rate*1000;
 }
 
-tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos){
+tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, string chamber, bool trapflag){
 
-//   double x = ran->Uniform(xlow,xhigh);
-//   double y = ran->Uniform(ylow,yhigh);
+  double x = 9e9;
+  double y = 9e9;
 
-  double x = ran->Uniform(mu_xlow,mu_xhigh);
-  double y = ran->Uniform(mu_ylow,mu_yhigh);
-
+  if (trapflag) {
+    while (!fiducial(x, y, chamber)){
+      x = ran->Uniform(mu_xlow,mu_xhigh);
+      y = ran->Uniform(mu_ylow,mu_yhigh);
+    }
+  }
+  else {
+    x = ran->Uniform(mu_xlow,mu_xhigh);
+    y = ran->Uniform(mu_ylow,mu_yhigh);
+  }
+  
   double thx, thy;
 
   std::tie(thx,thy) = cosmic_angle();
@@ -619,7 +686,7 @@ int main(int argc, char* argv[]) {
 
   int m_xroad = 8;
   int m_bcwind = 8;
-  double m_sig_art = 32.;
+  int m_sig_art = 32;
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
   //  vector<double> mm_eff = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9};
   double chamber_eff = -1;
@@ -632,6 +699,7 @@ int main(int argc, char* argv[]) {
   bool bkgflag = false;
   bool pltflag = false;
   bool uvrflag = false;
+  bool trapflag = false;
   bool ideal_tp   = false;
   bool ideal_vmm  = false;
   bool ideal_addc = false;
@@ -674,14 +742,17 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-thruv",6)==0){
       m_uvthr = atoi(argv[i+1]);
     }
+    if (strncmp(argv[i],"--trap",6)==0){
+      trapflag = true;
+    }
     if (strncmp(argv[i],"-ch",3)==0){
       sscanf(argv[i+1],"%s", chamberType);
       ch_type = true;
     }
     if (strncmp(argv[i],"-sig",4)==0){
-      m_sig_art = atof(argv[i+1]);
-      if ((int)m_sig_art == 0)
-	bkgonly = true;
+      m_sig_art = atoi(argv[i+1]);
+      if (m_sig_art == 0)
+        bkgonly = true;
     }
     if (strncmp(argv[i],"-b",2)==0){
       bkgrate = atoi(argv[i+1]);
@@ -746,7 +817,7 @@ int main(int argc, char* argv[]) {
   cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
-  printf("\r >> art res (in ns): %f", m_sig_art);
+  printf("\r >> art res (in ns): %d", m_sig_art);
   cout << endl;
   cout << "\r >> Using BCID window: " << bc_wind << endl;
   printf("\r >> Background rate of %d Hz per strip",bkgrate);
@@ -853,6 +924,7 @@ int main(int argc, char* argv[]) {
   hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_eff"]  = new TH2D("h_xy_eff",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
+  hists_2d["h_xy_bkg"]  = new TH2D("h_xy_bkg",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
 
   hists["h_mxres"]->Sumw2();
   hists["h_yres"]->Sumw2();
@@ -867,7 +939,7 @@ int main(int argc, char* argv[]) {
   hists["h_ntrig_bkgonly"] = new TH1F("h_ntrig_bkgonly", "h_ntrig_bkgonly", 101, -0.5, 100.5);
   hists_2d["h_ntrig_bc"] = new TH2D("h_ntrig_bc", "h_ntrig_bc", 49,-24.5,24.5, 101, -0.5, 100.5);
 
-  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr);
+  vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr, string(chamberType), trapflag);
 
   time_t timer = time(NULL);
   time_t curr_time;
@@ -885,7 +957,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (nevents > 10){
-      if (i % ((int)nevents/10) == 0){
+      if (i % ((int)nevents/100) == 0){
         curr_time = time(NULL);
         progress(curr_time-timer, i, nevents);
       }
@@ -901,7 +973,7 @@ int main(int argc, char* argv[]) {
     vector<double> ypos(NPLANES,-1.);
     
     double xmuon,ymuon;
-    std::tie(xmuon,ymuon) = generate_muon(xpos,ypos,zpos);
+    std::tie(xmuon,ymuon) = generate_muon(xpos, ypos, zpos, string(chamberType), trapflag);
 
     if (db){
       printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
@@ -932,7 +1004,7 @@ int main(int argc, char* argv[]) {
           n_u++;
         else
           n_v++;
-      art_time = ran->Gaus(400.,sig_art);
+      art_time = ran->Gaus(400.,(double)(sig_art));
       art_bc[j] = (int)floor(art_time/25.);
       Hit* newhit = nullptr;
       newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
@@ -995,6 +1067,9 @@ int main(int argc, char* argv[]) {
     hists["h_ntrig"]->Fill(ntrigroads);
     if (write_tree)
       Ntriggers = ntrigroads;
+    for (auto sl: m_slopes)
+      if (sl.imuonhits == 0 or true)
+        hists_2d["h_xy_bkg"]->Fill(sl.xavg, sl.yavg);
 
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
