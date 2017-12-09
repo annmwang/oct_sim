@@ -957,7 +957,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (nevents > 10){
-      if (i % ((int)nevents/100) == 0){
+      if (i % ((int)nevents/10) == 0){
         curr_time = time(NULL);
         progress(curr_time-timer, i, nevents);
       }
