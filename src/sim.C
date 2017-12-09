@@ -1070,7 +1070,7 @@ int main(int argc, char* argv[]) {
     if (write_tree)
       Ntriggers = ntrigroads;
     for (auto sl: m_slopes)
-      if (sl.imuonhits == 0 or true)
+      if (sl.imuonhits == 0)
         hists_2d["h_xy_bkg"]->Fill(sl.xavg, sl.yavg);
 
     if (db)
