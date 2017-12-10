@@ -58,7 +58,7 @@ public:
   double AvgYfromUV_BestPair();
   double YfromUV(Hit uhit, Hit vhit);
   std::vector<Hit> Hits();
-
+  std::tuple<double, double> CornerXY(int corner, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
 
 private:
   int m_iroad;
@@ -141,6 +141,11 @@ inline int Road::Offset(int ib){
     offsets[0] = 0;
     offsets[1] = -16; 
     offsets[2] = 17;
+  }
+  if (m_geometry->Get(0).ylen() == 1821){
+    offsets[0] = 0;
+    offsets[1] = -59; 
+    offsets[2] = 60;
   }
   if (m_geometry->Get(0).ylen() == 2200){
     offsets[0] = 0;
@@ -577,6 +582,47 @@ double Road::AvgYfromUV_BestPair(){
 std::vector<Hit> Road::Hits(){
   return m_hits;
 }
+
+std::tuple<double, double> Road::CornerXY(int corner, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv){
+
+  int uboard = 2;
+  int vboard = 3;
+
+  // find the min and max strip of U,V road
+  double ustrip_min = roadsize*(m_iroadu)   - nstr_dn_uv - Offset(uboard);
+  double ustrip_max = roadsize*(m_iroadu+1) + nstr_up_uv - Offset(uboard) - 1;
+  double vstrip_min = roadsize*(m_iroadv)   - nstr_dn_uv - Offset(vboard);
+  double vstrip_max = roadsize*(m_iroadv+1) + nstr_up_uv - Offset(vboard) - 1;
+
+  // get their x-positions
+  double x_ustrip_min = Xpos(ustrip_min, uboard);
+  double x_ustrip_max = Xpos(ustrip_max, uboard);
+  double x_vstrip_min = Xpos(vstrip_min, vboard);
+  double x_vstrip_max = Xpos(vstrip_max, vboard);
+
+  // derive the corner coordinates
+  double x_0 = (x_ustrip_min + x_vstrip_min) / 2.0;
+  double x_1 = (x_ustrip_min + x_vstrip_max) / 2.0;
+  double x_2 = (x_ustrip_max + x_vstrip_min) / 2.0;
+  double x_3 = (x_ustrip_max + x_vstrip_max) / 2.0;
+
+  double B = (1/TMath::Tan(1.5/180.*TMath::Pi()));
+  double y_offset = m_geometry->Get(0).ylen();
+  double y_0 = -B * (x_ustrip_min - x_vstrip_min) / 2.0 + y_offset;
+  double y_1 = -B * (x_ustrip_min - x_vstrip_max) / 2.0 + y_offset;
+  double y_2 = -B * (x_ustrip_max - x_vstrip_min) / 2.0 + y_offset;
+  double y_3 = -B * (x_ustrip_max - x_vstrip_max) / 2.0 + y_offset;
+
+  // get the requested corner
+  if (corner == 0) return std::make_tuple(x_0, y_0);
+  if (corner == 1) return std::make_tuple(x_1, y_1);
+  if (corner == 2) return std::make_tuple(x_2, y_2);
+  if (corner == 3) return std::make_tuple(x_3, y_3);
+
+  std::cerr << "Bad corner! Needs to be 0, 1, 2, or 3. You gave: " << corner << std::endl;
+  return std::make_tuple(0.0, 0.0);
+}
+
 #endif
 
 
