@@ -59,6 +59,7 @@ public:
   double YfromUV(Hit uhit, Hit vhit);
   std::vector<Hit> Hits();
   std::tuple<double, double> CornerXY(int corner, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
+  std::tuple<double, double> Center(int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv);
 
 private:
   int m_iroad;
@@ -581,6 +582,26 @@ double Road::AvgYfromUV_BestPair(){
 
 std::vector<Hit> Road::Hits(){
   return m_hits;
+}
+
+std::tuple<double, double> Road::Center(int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv) {
+
+  int corners = 4;
+  double x_corner = 0.0;
+  double y_corner = 0.0;
+  double x_total  = 0.0;
+  double y_total  = 0.0;
+
+  for (int corner = 0; corner < corners; corner++){
+    std::tie(x_corner, y_corner) = CornerXY(corner, roadsize, nstr_up_xx, nstr_dn_xx, nstr_up_uv, nstr_dn_uv);
+    x_total += x_corner;
+    y_total += y_corner;
+  }
+
+  double x_avg = x_total / (double)(corners);
+  double y_avg = y_total / (double)(corners);
+
+  return std::make_tuple(x_avg, y_avg);
 }
 
 std::tuple<double, double> Road::CornerXY(int corner, int roadsize, int nstr_up_xx, int nstr_dn_xx, int nstr_up_uv, int nstr_dn_uv){

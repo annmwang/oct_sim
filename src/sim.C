@@ -80,6 +80,8 @@ struct slope_t {
   double mxl;
   double xavg;
   double yavg;
+  double xcenter;
+  double ycenter;
   vector<Hit> slopehits;
 };
 
@@ -491,12 +493,15 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
         ntrigs++;
 
         int nmuonhits = roads[i]->NMuon();
+        double xcenter = 0;
+        double ycenter = 0;
+        std::tie(xcenter, ycenter) = roads[i]->Center(XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV);
 
 //         if (nmuonhits < 1)
 //           continue;
 
         slope_t m_slope;
-        
+
         m_slope.count = roads[i]->Count();
         m_slope.iroad = roads[i]->iRoad();
         m_slope.iroadu = roads[i]->iRoadu();
@@ -509,6 +514,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
         m_slope.mxl = roads[i]->Mxl();
         m_slope.xavg = roads[i]->AvgXofX();
         m_slope.yavg = -B*( roads[i]->AvgXofU() - roads[i]->AvgXofV() + (roads[i]->AvgZofV()-roads[i]->AvgZofU())*roads[i]->Mxl() ) / 2 + yhigh;
+        m_slope.xcenter = xcenter;
+        m_slope.ycenter = ycenter;
         if (saveHits)
           m_slope.slopehits = roads[i]->Hits();
         slopes.push_back(m_slope);
@@ -914,6 +921,8 @@ int main(int argc, char* argv[]) {
   hists["h_yres"] = new TH1F("h_yres", "#DeltaY", 700, -3500, 3500);
   //TH1F * h_xres = new TH1F("h_xres", "#DeltaX", 50, -2.5, 2.5);
   hists["h_xres"] = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
+  hists["h_xres_center"] = new TH1F("h_xres_center", "#DeltaX", 123, -20.5, 20.5);
+  hists["h_yres_center"] = new TH1F("h_yres_center", "#DeltaY", 700, -3500, 3500);
 
   hists["h_nmu"] = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
   hists_2d["h_nmuvsdx"] = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
@@ -928,13 +937,10 @@ int main(int argc, char* argv[]) {
   hists_2d["h_xy_eff"]  = new TH2D("h_xy_eff",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_bkg"]  = new TH2D("h_xy_bkg",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
 
-  hists["h_mxres"]->Sumw2();
-  hists["h_yres"]->Sumw2();
-  hists["h_xres"]->Sumw2();
-
-  hists["h_mxres"]->StatOverflows(kTRUE);
-  hists["h_yres"]->StatOverflows(kTRUE);
-  hists["h_xres"]->StatOverflows(kTRUE);
+  for (auto kv: hists){
+    kv.second->Sumw2();
+    kv.second->StatOverflows(kTRUE);
+  }
 
   // multiplicity studies
   hists["h_ntrig"] = new TH1F("h_ntrig", "h_ntrig", 101, -0.5, 100.5);
@@ -955,6 +961,7 @@ int main(int argc, char* argv[]) {
 
       Hit_strips.clear();
       Hit_planes.clear();
+      Hit_ages.clear();
       trigger_BC.clear();
     }
 
@@ -1096,6 +1103,8 @@ int main(int argc, char* argv[]) {
     myslope.count = 0;
     myslope.xavg = 0.;
     myslope.yavg = 0.;
+    myslope.xcenter = 0.;
+    myslope.ycenter = 0.;
     myslope.imuonhits = 0;
     myslope.xmuon = 0;
     myslope.age = -999;
@@ -1161,6 +1170,8 @@ int main(int argc, char* argv[]) {
     myslope.uvbkg       = m_slopes[the_chosen_one].uvbkg;
     myslope.xavg        = m_slopes[the_chosen_one].xavg;
     myslope.yavg        = m_slopes[the_chosen_one].yavg;
+    myslope.xcenter     = m_slopes[the_chosen_one].xcenter;
+    myslope.ycenter     = m_slopes[the_chosen_one].ycenter;
     myslope.iroad       = m_slopes[the_chosen_one].iroad;
     myslope.imuonhits   = m_slopes[the_chosen_one].imuonhits;
     if (pltflag)
@@ -1181,6 +1192,8 @@ int main(int argc, char* argv[]) {
     hists["h_mxres"]->Fill(deltaMX*1000.);
     hists["h_yres"]->Fill(myslope.yavg-ymuon);
     hists["h_xres"]->Fill(myslope.xavg-xmuon);
+    hists["h_yres_center"]->Fill(myslope.ycenter-ymuon);
+    hists["h_xres_center"]->Fill(myslope.xcenter-xmuon);
     hists["h_nmu"]->Fill(myslope.imuonhits);
     hists_2d["h_nmuvsdx"]->Fill(myslope.imuonhits, myslope.xavg-xmuon);
     if (muon_trig_ok)
