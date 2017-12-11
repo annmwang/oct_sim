@@ -955,6 +955,7 @@ int main(int argc, char* argv[]) {
 
       Hit_strips.clear();
       Hit_planes.clear();
+      Hit_ages.clear();
       trigger_BC.clear();
     }
 
