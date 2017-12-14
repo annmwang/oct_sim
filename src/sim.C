@@ -707,6 +707,8 @@ int main(int argc, char* argv[]) {
   int m_bcwind = 8;
   int m_sig_art = 32;
 
+  int m_sig_art_x = 1; // smear ART position, in strips
+
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
   double chamber_eff = -1;
 
@@ -725,6 +727,7 @@ int main(int argc, char* argv[]) {
   bool ideal_addc = false;
   bool write_tree = false;
   bool bkgonly = false;
+  bool smear_art = false;
 
   char outputFileName[400];
   char chamberType[400];
@@ -810,6 +813,9 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-strips", 7)==0){
       m_NSTRIPS = atoi(argv[i+1]);
     }
+    if (strncmp(argv[i],"-smear",6)==0){
+      smear_art = true;
+    }
   }
   if (!b_out){
     cout << "Error at Input: please specify output file (-o flag)" << endl;
@@ -848,6 +854,8 @@ int main(int argc, char* argv[]) {
   printf("\r >> plot flag: %s", pltflag ? "true" : "false");
   cout << endl;
   printf("\r >> bkgonly flag: %s", bkgonly ? "true" : "false");
+  cout << endl;
+  printf("\r >> smear art position: %s", smear_art ? "true" : "false");
   cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
@@ -1031,6 +1039,7 @@ int main(int argc, char* argv[]) {
     
     double art_time;
     
+    double strip, strip_smear;
     for ( int j = 0; j < NPLANES; j++){
       if (oct_hitmask[j] == 1){
         if (j < 2)
@@ -1044,7 +1053,16 @@ int main(int argc, char* argv[]) {
       art_time = ran->Gaus(400.,(double)(sig_art));
       art_bc[j] = (int)floor(art_time/25.);
       Hit* newhit = nullptr;
-      newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
+
+      strip = GEOMETRY->Get(j).channel_from_pos(xpos[j],ypos[j]);
+      if (smear_art){
+        strip_smear = round(ran->Gaus(strip,m_sig_art_x));
+      }
+      else{
+        strip_smear = strip;
+      }
+      newhit = new Hit(j, art_bc[j], strip_smear, false, *GEOMETRY);
+      //newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
       if (!bkgonly)
 	hits.push_back(newhit);
       }
