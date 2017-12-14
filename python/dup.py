@@ -1,8 +1,11 @@
 """
-Run like:
-> python gingko.py -ib bkg.root -isb bkgsig.root -thruv <n(uv)> [--large] [--small] [-l]
+Run like: 
+> python dup.py
+
+Does duplicate analysis (unique triggers), takes oct_sim output
 
 """
+
 
 import ROOT, sys
 import time as tm
@@ -21,80 +24,47 @@ def main(argv):
     args = options()
 
     global nroads
-    if "272" in args.ib:
+    if "272" in args.isb:
         nroads = 272
-    elif "136" in args.ib:
+    elif "136" in args.isb:
         nroads = 136
-    elif "96" in args.ib:
+    elif "96" in args.isb:
         nroads = 96
     else:
         print "N(roads) not found! Exiting."
         sys.exit(1)
 
-
-    ifile = ROOT.TFile(args.ib)
-    _bkg_tree = ifile.Get("gingko")
-    _bkg_branches = _bkg_tree.GetListOfBranches()
+    my_bc = int(args.bc)
 
     sigbkg_file = ROOT.TFile(args.isb)
     _sigbkg_tree = sigbkg_file.Get("gingko")
     _sigbkg_branches = _sigbkg_tree.GetListOfBranches()
 
-    trees = [_bkg_tree,_sigbkg_tree]
+    trees = [_sigbkg_tree]
 
     i = 0
 
-    all_hists = [{},{}]
-    all_hists_2d = [{},{}]
-
-    all_hists_titles = [{},{}]
-    all_hists_2d_x = [{},{}]
-    all_hists_2d_y = [{},{}]
-
+    all_hists = [{}]
+    all_hists_titles = [{}]
 
     for hists in all_hists:
-#         hists["max_road"] = ROOT.TH1D("max_road", "mx_road", 16, -0.5, 15.5)
-#         hists["road_spread"] = ROOT.TH1D("road_spread", "road_spread", 111, -10.5, 100.5)
-#         hists["trigger_BC"]  = ROOT.TH1D("trigger_BC", "trigger_BC", 17, -1.5, 15.5)
-#         hists["planes"]  = ROOT.TH1D("planes", "planes", 10, -1.5, 8.5)
-#         hists["nhits"]  = ROOT.TH1D("nhits", "nhits", 10, -0.5, 9.5)
-#         hists["ages"]  = ROOT.TH1D("ages", "ages", 12, -2.5, 9.5)
-        #hists["ntrig"] = ifile.Get("histograms/h_ntrig") if i == 0 else sigbkg_file.Get("histograms/h_ntrig")
-        hists["ntrig"] = ROOT.TH1D("ntrig", "ntrig", 41, -0.5, 40.5)
-        hists["ntrig_BC5"] = ROOT.TH1D("ntrig_BC5", "ntrig_BC5", 21, -0.5, 20.5)
-        hists["ntrig_BC7"] = ROOT.TH1D("ntrig_BC7", "ntrig_BC7", 21, -0.5, 20.5)
-        hists["ntrig_BC3to10"] = ROOT.TH1D("ntrig_BC3to10", "ntrig_BC3to10", 41, -0.5, 40.5)
-        hists["ntrig_BCm1"] = ROOT.TH1D("ntrig_BCm1", "ntrig_BCm1", 15, -0.5, 14.5)
-        i+=1
+        hists["all_triggers"] = ROOT.TH1D("all_triggers", "all_triggers", 16, -0.5, 15.5)
+        hists["unique_triggers_all"] = ROOT.TH1D("unique_triggers_all", "unique_triggers_all", 16, -0.5, 15.5)
+        if int(args.thruv) != 0:
+            hists["unique_trigs_per_x"] = ROOT.TH1D("unique_trigs_per_x", "unique_trigs_per_x", 16, -0.5, 15.5)
+            hists["unique_xroads"] = ROOT.TH1D("unique_xroads", "unique_xroads", 16, -0.5, 15.5)
+
     for hists in all_hists:
         for key,h1 in hists.iteritems():
             h1.StatOverflows(ROOT.kTRUE)
 
     for hists_titles in all_hists_titles:
-#         hists_titles["max_road"] = "effective road size"
-#         hists_titles["road_spread"] = "x road spread"
-#         hists_titles["trigger_BC"] = "Trigger BC"
-#         hists_titles["planes"] = "Plane Index"
-#         hists_titles["nhits"] = "N(hits) / trigger"
-#         hists_titles["ages"] = "Trigger hit ages"
-        hists_titles["ntrig"] = "N(triggers)"
-        hists_titles["ntrig_BC7"] = "N(triggers) / BC"
-        hists_titles["ntrig_BC5"] = "N(triggers) / BC"
-        hists_titles["ntrig_BC3to10"] = "N(triggers)"
-        hists_titles["ntrig_BCm1"] = "N(triggers) / BC"
-
-    for hists_2d in all_hists_2d:
-        hists_2d["BC_ntrig"]  = ROOT.TH2D("BC_ntrig", "BC_ntrig", 17, -1.5, 15.5, 21, -0.5, 20.5)
-        #hists_2d["road_spread_ntrig"] = ROOT.TH2D("road_spread_ntrig", "road_spread_ntrig", 111, -10.5, 100.5, 21, -0.5, 20.5)
-
-    for hists_2d_x in all_hists_2d_x:
-        hists_2d_x["BC_ntrig"] = "BC"
-        #hists_2d_x["road_spread_ntrig"] = "road spread"
-
-    for hists_2d_y in all_hists_2d_y:
-        hists_2d_y["BC_ntrig"] = "N(triggers)"
-        #hists_2d_y["road_spread_ntrig"] = "N(triggers)"
-
+        hists_titles["unique_triggers_all"] = "N(unique triggers @ BC"+str(my_bc)+")"
+        hists_titles["all_triggers"] = "N(triggers @ BC"+str(my_bc)+")"
+        if int(args.thruv) != 0:
+            hists_titles["unique_trigs_per_x"] = "N(unique triggers per x road @ BC"+str(my_bc)+")"
+            hists_titles["unique_xroads"] = "N(unique x-roads @ BC"+str(my_bc)+")"
+    
     tstart = tm.time()
     nevents = trees[0].GetEntries()
 
@@ -109,78 +79,74 @@ def main(argv):
         i = 0
         nevents = _tree.GetEntries()
         while _tree.GetEntry(i):
-
-            # clear dictionary
-            for k in range(-1,16):
-                tdict[k] = 0
-
-            # count ntrig per BC
-            for j in range(_tree.trigger_BC.size()):
-                #all_hists[itree]["trigger_BC"].Fill(_tree.trigger_BC[j])
-                iBC = _tree.trigger_BC[j]
-                if (iBC > 15):
+            ntrig = _tree.Hit_strips.size()
+            d_dups = {}
+            dups = []
+            ntrig_7 = 0
+            for j in range(ntrig):
+                if _tree.trigger_BC[j] == my_bc:
+                    ntrig_7 += 1
+            all_hists[0]["all_triggers"].Fill(ntrig_7)
+            for j in range(ntrig):
+                if _tree.trigger_BC[j] != my_bc:
                     continue
-                tdict[iBC] += 1
+                # print hits
+#                 print "%d: "%(j),
+#                 for hit in _tree.Hit_strips[j]:
+#                     print hit,
+#                     print ", ",
+#                 print
 
-            # fill ntrig BC histograms
-            tot = 0
-            for iBC, ntr in tdict.iteritems():
-                all_hists_2d[itree]["BC_ntrig"].Fill(iBC,ntr)
-                tot += ntr
-                if iBC == -1:
-                    all_hists[itree]["ntrig_BCm1"].Fill(ntr)
-                    continue            
-                if iBC == 5:
-                    all_hists[itree]["ntrig_BC5"].Fill(ntr)
+                if j in dups:
                     continue
-                if iBC == 7:
-                    all_hists[itree]["ntrig_BC7"].Fill(ntr)
-                    continue
-
-
-            all_hists[itree]["ntrig_BC3to10"].Fill(tdict[3]+tdict[4]+tdict[5]+tdict[6]+tdict[7]+tdict[8]+tdict[9]+tdict[10])
-            all_hists[itree]["ntrig"].Fill(tot)
-            
+                for k in range(j,ntrig):
+                    if _tree.trigger_BC[k] != my_bc:
+                        continue
+                    if k in dups:
+                        continue
+                    jtrigger = set(_tree.Hit_strips[j])
+                    ktrigger = set(_tree.Hit_strips[k])
+                    if len(ktrigger.difference(jtrigger)) == 0:
+                        if j not in d_dups.keys():
+                            d_dups[j] = [k]
+                        else:
+                            d_dups[j].append(k)
+                        if k not in dups:
+                            dups.append(k)
+            xroads = {}
+            if args.v:
+                print
+                print "EVENT", _tree.EventNum
+                print
+                print "ntrig @ BC 7:",ntrig_7
+                print "duplicates:",d_dups
+            for key in d_dups.keys():
+                my_xroad = _tree.iRoad_x[key]
+                if my_xroad not in xroads.keys():
+                    xroads[my_xroad] = [key]
+                else:
+                    xroads[my_xroad].append(key)
+            if args.v:
+                print "xroads + assoc. itrig:", xroads
+            if int(args.thruv) != 0:
+                for key, value in xroads.iteritems():
+                    all_hists[0]["unique_trigs_per_x"].Fill(len(value))
+                all_hists[0]["unique_xroads"].Fill(len(xroads.keys()))
+            if args.v:
+                print "unique triggers:"
+                for key in d_dups.keys():
+                    print "itrig %d, (xroad %d, uroad %d, vroad %d): "%(key, _tree.iRoad_x[key], _tree.iRoad_u[key], _tree.iRoad_v[key]),
+                    for m,hit in enumerate(_tree.Hit_strips[key]):   
+                        print "%d:"%(_tree.Hit_planes[key][m]),
+                        print hit,                                                                                             
+                        print ", ",                                                                                            
+                    print 
+            all_hists[0]["unique_triggers_all"].Fill(len(d_dups.keys()))
             i += 1
-            progress(tm.time()-tstart, i, nevents)
-            continue
-
-            for j in range(_tree.Hit_strips.size()):
-                all_hists[itree]["max_road"].Fill(max(_tree.Hit_strips[j])-min(_tree.Hit_strips[j]) + 1)
-                all_hists[itree]["nhits"].Fill(len(_tree.Hit_strips[j]))
-            if (_tree.iRoad_x.size() < 2):
-                all_hists[itree]["road_spread"].Fill(0)
-                all_hists_2d[itree]["road_spread_ntrig"].Fill(0,_tree.Ntriggers)
-            else:
-                all_hists[itree]["road_spread"].Fill(max(_tree.iRoad_x)-min(_tree.iRoad_x))
-                all_hists_2d[itree]["road_spread_ntrig"].Fill(max(_tree.iRoad_x)-min(_tree.iRoad_x),_tree.Ntriggers)
-
-            for j in range(_tree.Hit_planes.size()):
-                x1 = 0
-                x2 = 0
-                x3 = 0
-                x4 = 0
-                for k in range(len(_tree.Hit_planes[j])):
-                    all_hists[itree]["planes"].Fill(_tree.Hit_planes[j][k])
-                    if (_tree.Hit_planes[j][k] == 0):
-                        x1 += 1
-                    if (_tree.Hit_planes[j][k] == 1):
-                        x2 += 1
-                    if (_tree.Hit_planes[j][k] == 6):
-                        x3 += 1
-                    if (_tree.Hit_planes[j][k] == 7):
-                        x4 += 1
-    #             if (x1 is not 1 or x2 is not 1 or x3 is not 1 or x4 is not 1):
-    #                 print "nevent", _tree.EventNum
-    #                 print "help:", x1, x2, x3, x4
-    #                 sys.exit(1)
-            for j in range(_tree.Hit_ages.size()):
-                for k in range(_tree.Hit_ages[j].size()):
-                    all_hists[itree]["ages"].Fill(_tree.Hit_ages[j][k])
-
-            i += 1
-            progress(tm.time()-tstart, i, nevents)
+            if not(args.v):
+                progress(tm.time()-tstart, i, nevents)
         itree += 1
+
     setstyle()
     c = ROOT.TCanvas("c", "canvas", 800, 800)
     c.cd()
@@ -198,17 +164,17 @@ def main(argv):
         h1.SetLineColor(ROOT.kAzure+7)
         h1.SetFillColorAlpha(ROOT.kAzure+7,0.4)
         h1.Draw("hist")
-        sig1 = h1.GetRMS()
         show_overflow(h1)
-        h2 = all_hists[1][key]
-        style(h2)
-        h2.SetLineWidth(2)
-        h2.SetLineColor(ROOT.kPink-8)
-        h2.SetFillColorAlpha(ROOT.kPink-8,0.4)
-        if "ntrig" in key:
-            show_overflow(h2)
-            h2.Draw("hist same")
-            sig2 = h2.GetRMS()
+        tex0 = ROOT.TLatex(0.28, 0.75,"#mu = %3.3f"%(h1.GetMean()))
+        tex0.SetNDC()
+        tex0.SetTextSize(0.032)
+        tex0.SetTextFont(42)
+        tex0.Draw()
+        tex1 = ROOT.TLatex(0.28, 0.75-0.04,"%d events"%(h1.Integral()))
+        tex1.SetNDC()
+        tex1.SetTextSize(0.032)
+        tex1.SetTextFont(42)
+        tex1.Draw()
         texs = []
         if args.large is True:
             texs = logo(args.thruv, "large")
@@ -216,38 +182,6 @@ def main(argv):
             texs = logo(args.thruv, "small")
         for tex in texs:
             tex.Draw()
-        if "ntrig" in key:
-            legend = leg(h1,h2)
-            legend.Draw("same")
-
-        if args.l:
-            title = key+"_log.pdf"
-        else:
-            title = key+".pdf"
-        c.Print(title)
-        c.Clear()
-
-    setstyle_2d()
-    c = ROOT.TCanvas("c", "canvas", 800, 800)
-    c.cd()
-
-    if args.l:
-        c.SetLogz()
-    for key,h1 in all_hists_2d[1].iteritems():
-        print key
-        print h1
-        h1.SetTitle("")
-        h1.GetXaxis().SetTitle(hists_2d_x[key])
-        h1.GetYaxis().SetTitle(hists_2d_y[key])
-        h1.GetXaxis().SetLabelSize(0.025)
-        h1.GetYaxis().SetLabelSize(0.025)
-        h1.GetXaxis().SetTitleSize(0.04)
-        h1.GetYaxis().SetTitleSize(0.04)
-        h1.GetXaxis().SetTitleOffset(1)
-        h1.GetYaxis().SetTitleOffset(1)
-        h1.GetZaxis().SetTitleOffset(1.3)
-        style(h1)
-        h1.Draw("colz")
         if args.l:
             title = key+"_log.pdf"
         else:
@@ -306,12 +240,13 @@ def style(hist):
 
 def options():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-ib", default="", help="bkg input file")
     parser.add_argument("-isb", default="", help="sig + bkg input file")
     parser.add_argument("-l", action="store_true", help="log")
+    parser.add_argument("-bc", default=-1, help="bc")
     parser.add_argument("-thruv", default=-1, help="threshold uv")
     parser.add_argument("--large", action="store_true", help="large")
     parser.add_argument("--small", action="store_true", help="small")
+    parser.add_argument("-v", action="store_true", help="verbosity")
 
     return parser.parse_args()    
 
@@ -335,6 +270,7 @@ def logo(thr, ch):
     #tex6 = ROOT.TLatex(xlogo, ylogo-6*0.04, "N(roads): 136")
     tex_large = ROOT.TLatex(0.65, 0.85, "Strip length: 2.2m")
     tex_small = ROOT.TLatex(0.65, 0.85, "Strip length: 0.5m")
+
     texs = []
     if ch == "large":
         texs = [tex0, tex1, tex2, tex3, tex4, tex5, tex6,
@@ -342,8 +278,7 @@ def logo(thr, ch):
                 ]
     else:
         texs = [tex0, tex1, tex2, tex3, tex4, tex5, tex6,
-                tex_small, 
-                #tex_large,
+                tex_small,
                 ]
     for tex in texs:
         tex.SetNDC()
@@ -353,10 +288,10 @@ def logo(thr, ch):
     return texs
 
 def leg(h1,h2):
-    legend = ROOT.TLegend(0.28,0.75,0.38,0.85)
+    legend = ROOT.TLegend(0.30,0.75,0.4,0.85)
     legend.SetMargin(0.5)
-    legend.AddEntry(h1,    " bkg: #mu = %3.3f"%(h1.GetMean()),"f")
-    legend.AddEntry(h2,  " bkg + sig: #mu = %3.3f"%(h2.GetMean()), "f")
+    legend.AddEntry(h1,    " bkg","f")
+    legend.AddEntry(h2,  " bkg + sig", "f")
     legend.SetBorderSize(0)
     legend.SetFillColor(0)
     legend.SetFillStyle(0)
