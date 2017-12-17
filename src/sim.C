@@ -904,6 +904,7 @@ int main(int argc, char* argv[]) {
   vector<vector<int>> Hit_planes;
   vector<vector<int>> Hit_ages;
   vector<int> trigger_BC;
+  vector<int> N_muon;
 
   if (write_tree) {
 
@@ -916,6 +917,7 @@ int main(int argc, char* argv[]) {
     tree->Branch("Hit_planes", &Hit_planes);
     tree->Branch("Hit_ages", &Hit_ages);
     tree->Branch("trigger_BC", &trigger_BC);
+    tree->Branch("N_muon", &N_muon);
 
   }
 
@@ -999,6 +1001,7 @@ int main(int argc, char* argv[]) {
       Hit_planes.clear();
       Hit_ages.clear();
       trigger_BC.clear();
+      N_muon.clear();
     }
 
     if (nevents > 10){
@@ -1188,6 +1191,7 @@ int main(int argc, char* argv[]) {
         }
         
         trigger_BC.push_back(m_slopes[k].age);
+        N_muon.push_back(m_slopes[k].imuonhits);
         Hit_strips.push_back(slopehits_ch);
         Hit_planes.push_back(slopehits_planes);
         Hit_ages.push_back(slopehits_ages);
