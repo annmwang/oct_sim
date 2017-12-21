@@ -896,6 +896,9 @@ int main(int argc, char* argv[]) {
   int EventNum = 0;
   int Ntriggers;
 
+  double real_x_muon;
+  double real_y_muon;
+
   vector<int> iRoad_x;
   vector<int> iRoad_u;
   vector<int> iRoad_v;
@@ -905,11 +908,19 @@ int main(int argc, char* argv[]) {
   vector<vector<int>> Hit_ages;
   vector<int> trigger_BC;
   vector<int> N_muon;
+  vector<int> N_xmuon;
+
+  vector<double> trig_x;
+  vector<double> trig_y;
 
   if (write_tree) {
 
     tree->Branch("EventNum",  &EventNum);
     tree->Branch("Ntriggers",  &Ntriggers);
+
+    tree->Branch("real_x_muon",  &real_x_muon);
+    tree->Branch("real_y_muon",  &real_y_muon);
+
     tree->Branch("iRoad_x", &iRoad_x);
     tree->Branch("iRoad_u", &iRoad_u);
     tree->Branch("iRoad_v", &iRoad_v);
@@ -918,6 +929,9 @@ int main(int argc, char* argv[]) {
     tree->Branch("Hit_ages", &Hit_ages);
     tree->Branch("trigger_BC", &trigger_BC);
     tree->Branch("N_muon", &N_muon);
+    tree->Branch("N_xmuon", &N_xmuon);
+    tree->Branch("trig_x", &trig_x);
+    tree->Branch("trig_y", &trig_y);
 
   }
 
@@ -993,6 +1007,8 @@ int main(int argc, char* argv[]) {
 
     if (write_tree){
       EventNum++;
+      real_x_muon = -1;
+      real_y_muon = -1;
       iRoad_x.clear();
       iRoad_u.clear();
       iRoad_v.clear();
@@ -1002,6 +1018,9 @@ int main(int argc, char* argv[]) {
       Hit_ages.clear();
       trigger_BC.clear();
       N_muon.clear();
+      N_xmuon.clear();
+      trig_x.clear();
+      trig_y.clear();
     }
 
     if (nevents > 10){
@@ -1022,6 +1041,9 @@ int main(int argc, char* argv[]) {
     
     double xmuon,ymuon;
     std::tie(xmuon,ymuon) = generate_muon(xpos, ypos, zpos, string(chamberType), trapflag);
+
+    real_x_muon = xmuon;
+    real_y_muon = ymuon;
 
     if (db){
       printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
@@ -1131,7 +1153,7 @@ int main(int argc, char* argv[]) {
 
     if (db)
       cout << "Ntriggered roads: " << ntrigroads << endl;
-    if (ntrigroads == 0 && muon_trig_ok){
+    if (ntrigroads == 0){
       //      if (db)
       cout << "no triggered roads?" << endl;
       if (write_tree)
@@ -1192,9 +1214,12 @@ int main(int argc, char* argv[]) {
         
         trigger_BC.push_back(m_slopes[k].age);
         N_muon.push_back(m_slopes[k].imuonhits);
+        N_xmuon.push_back(m_slopes[k].xmuon);
         Hit_strips.push_back(slopehits_ch);
         Hit_planes.push_back(slopehits_planes);
         Hit_ages.push_back(slopehits_ages);
+        trig_x.push_back(m_slopes[k].xavg);
+        trig_y.push_back(m_slopes[k].yavg);
       }
 
       if (m_slopes[k].imuonhits == 0)
