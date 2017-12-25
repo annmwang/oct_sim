@@ -516,7 +516,8 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
       }
 
       //if (roads[i]->Coincidence(bc_wind) && bc == (mu_firstbc - 1)){
-      if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1) && (roads[i]->xfilter(filtered_xroads) || m_pf == -1)){
+      if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1) && ((std::find(filtered_xroads.begin(), filtered_xroads.end(), roads[i]->iRoadx()) != filtered_xroads.end()) || m_pf == -1)){
+        //      if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1) && (roads[i]->xfilter(filtered_xroads) || m_pf == -1)){
 	//if (roads[i]->Coincidence(bc_wind)){
         if (db){
           cout << "---------------------------" << endl;

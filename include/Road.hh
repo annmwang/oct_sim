@@ -37,7 +37,6 @@ public:
   void Increment_Age(int wind);
   bool Prefilter();
   bool Coincidence(int wind);
-  bool xfilter(std::vector<int> m_iroads_x);
   int NMuon();
   bool Horiz_ok();
   bool Stereo_ok();
@@ -309,13 +308,6 @@ bool Road::Prefilter(){
 bool Road::Coincidence(int wind){
   //return Horiz_ok() && Stereo_ok();
   return Horiz_ok() && Stereo_ok() && Mature(wind);
-}
-bool Road::xfilter(std::vector<int> m_iroads_x){
-  for (unsigned int i = 0; i < m_iroads_x.size(); i++){
-    if (m_iroads_x[i] == m_iroadx)
-      return true;
-  }
-  return false;
 }
 
 int Road::NMuon(){
