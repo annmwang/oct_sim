@@ -40,7 +40,7 @@ using namespace std;
 TRandom3 *ran = new TRandom3(time(NULL));
 
 
-bool db = false; // debug output flag
+bool db = true; // debug output flag
 
 // SOME CONSTANTS
 
@@ -373,7 +373,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   return oct_hitmask;
 }
 
-tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_addc, bool ideal_tp, int evt){
+tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_addc, bool ideal_tp, int evt, int m_pf){
 
   // applies the MMTP finder to a series of hits and roads
   // returns slope structs for roads which found a coincidence and have at least 1 real muon hit
@@ -408,6 +408,9 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
   vector<int> to_erase = {};
   int n_vmm  = NSTRIPS/64;
   int n_addc = NSTRIPS/2048;
+  
+  vector<int> filtered_xroads;
+
 
   // each road makes independent triggers, evaluated on each BC
   for (int bc = bc_start; bc < bc_end; bc++){
@@ -482,13 +485,38 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
       }
     }
 
+    filtered_xroads.clear();
+    bool has_xroad;
+
     for (unsigned int i = 0; i < roads.size(); i++){
 
       roads[i]->Increment_Age(bc_wind);
       roads[i]->Add_Hits(hits_now, XROAD, NSTRIPS_UP_XX, NSTRIPS_DN_XX, NSTRIPS_UP_UV, NSTRIPS_DN_UV, ideal_tp);
 
+      // prefilter for x roads
+      if (m_pf > -1){ 
+        if (roads[i]->Prefilter() && (filtered_xroads.size() < m_pf)){
+          has_xroad = false;
+          int m_iroad_x = roads[i]->iRoadx();
+          for (unsigned int k = 0; k < filtered_xroads.size(); k++){
+            if (m_iroad_x == filtered_xroads[k]){
+              has_xroad = true;
+              break;
+            }
+          }
+          if (has_xroad == false){
+            filtered_xroads.push_back(roads[i]->iRoadx());
+            if (db){
+              cout << "---------------------------" << endl;
+              cout << "filtered x road: " << roads[i]->iRoadx() << endl;
+              cout << "---------------------------" << endl;
+            }
+          }
+        }
+      }
+
       //if (roads[i]->Coincidence(bc_wind) && bc == (mu_firstbc - 1)){
-      if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1)){
+      if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1) && (roads[i]->xfilter(filtered_xroads) || m_pf == -1)){
 	//if (roads[i]->Coincidence(bc_wind)){
         if (db){
           cout << "---------------------------" << endl;
@@ -709,6 +737,8 @@ int main(int argc, char* argv[]) {
 
   int m_sig_art_x = 1; // smear ART position, in strips
 
+  int m_prefilt = -1;
+
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
   double chamber_eff = -1;
 
@@ -783,6 +813,9 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-p",2)==0){
       pltflag = true;
+    }
+    if (strncmp(argv[i],"--pf",4)==0){
+      m_prefilt = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-uvr",4)==0){
       uvrflag = true;
@@ -1143,7 +1176,7 @@ int main(int argc, char* argv[]) {
     int ntrigroads_bkgonly = 0;
 
 
-    std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i);
+    std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i, m_prefilt);
     hists["h_ntrig"]->Fill(ntrigroads);
     if (write_tree)
       Ntriggers = ntrigroads;
