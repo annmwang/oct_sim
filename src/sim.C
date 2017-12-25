@@ -40,7 +40,7 @@ using namespace std;
 TRandom3 *ran = new TRandom3(time(NULL));
 
 
-bool db = true; // debug output flag
+bool db = false; // debug output flag
 
 // SOME CONSTANTS
 
