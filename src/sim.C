@@ -728,6 +728,9 @@ int main(int argc, char* argv[]) {
   bool write_tree = false;
   bool bkgonly = false;
   bool smear_art = false;
+  bool funcsmear_art = false;
+
+  TF1* func = 0;
 
   char outputFileName[400];
   char chamberType[400];
@@ -816,6 +819,21 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-smear",6)==0){
       smear_art = true;
     }
+    if (strncmp(argv[i],"-funcsmear",10)==0){
+      funcsmear_art = true;
+      // func defined in mm
+      func = new TF1("gaus3", "gaus(0)+gaus(3)+gaus(6)", -10, 10);
+      func->SetNpx(1000);
+      func->SetParameter(0, 1826.11631);
+      func->SetParameter(1,    0.00000);
+      func->SetParameter(2,    0.21855);
+      func->SetParameter(3,  185.87369);
+      func->SetParameter(4,    0.00000);
+      func->SetParameter(5,    0.70467);
+      func->SetParameter(6,   10.68744);
+      func->SetParameter(7,    0.00000);
+      func->SetParameter(8,    3.70079);
+    }
   }
   if (!b_out){
     cout << "Error at Input: please specify output file (-o flag)" << endl;
@@ -844,6 +862,10 @@ int main(int argc, char* argv[]) {
     return 0;
   } 
 
+  if (smear_art && funcsmear_art){
+    cout << "Cant smear with gaussian and functional form at the same time!" << endl;
+    return 0;
+  }
 
   cout << endl;
   cout << blue << "--------------" << ending << endl;
@@ -855,7 +877,9 @@ int main(int argc, char* argv[]) {
   cout << endl;
   printf("\r >> bkgonly flag: %s", bkgonly ? "true" : "false");
   cout << endl;
-  printf("\r >> smear art position: %s", smear_art ? "true" : "false");
+  printf("\r >> smear art position (gaussian): %s", smear_art ? "true" : "false");
+  cout << endl;
+  printf("\r >> smear art position (functional): %s", funcsmear_art ? "true" : "false");
   cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
@@ -975,6 +999,7 @@ int main(int argc, char* argv[]) {
   hists["h_xres"] = new TH1F("h_xres", "#DeltaX", 123, -20.5, 20.5);
   hists["h_xres_center"] = new TH1F("h_xres_center", "#DeltaX", 123, -20.5, 20.5);
   hists["h_yres_center"] = new TH1F("h_yres_center", "#DeltaY", 700, -3500, 3500);
+  hists["h_xres_strip"] = new TH1F("h_xres_strip", "#DeltaX", 200, -5, 5);
 
   hists["h_nmu"] = new TH1F("h_nmu", "h_nmu", 9, -0.5, 8.5);
   hists_2d["h_nmuvsdx"] = new TH2D("h_nmuvsdx", "h_nmuvsdx", 9, -0.5, 8.5,82, -20.5, 20.5);
@@ -1083,9 +1108,17 @@ int main(int argc, char* argv[]) {
       if (smear_art){
         strip_smear = round(ran->Gaus(strip,m_sig_art_x));
       }
+      else if (funcsmear_art){
+        strip_smear = round( strip + func->GetRandom(-10, 10)/0.4 );
+      }
       else{
         strip_smear = strip;
       }
+
+      // sanity check
+      if (j < 2 || j > 5)
+        hists["h_xres_strip"]->Fill(xpos[j] - (GEOMETRY->Get(j).Origin().X() + GEOMETRY->Get(j).LocalXatYbegin(strip_smear)));
+
       newhit = new Hit(j, art_bc[j], strip_smear, false, *GEOMETRY);
       //newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
       if (!bkgonly)
