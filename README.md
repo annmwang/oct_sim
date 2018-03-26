@@ -32,3 +32,5 @@ Configurable parameters include:
 * [-thrx] set the X coincidence threshold :: default 2
 * [-thruv] set the UV coincidence threshold :: default 2
 * [-tree] write a TTree of hits and triggers :: default OFF
+* [-angx] flat distribution of angles, in degrees :: default 0
+* [-angy] flat distribution of angles, in degrees :: default 0
