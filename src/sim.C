@@ -709,6 +709,10 @@ int main(int argc, char* argv[]) {
   int m_bcwind = 8;
   int m_sig_art = 32;
 
+  int killran   = 0;
+  int killxran  = 0;
+  int killuvran = 0;
+
   int m_sig_art_x = 1; // smear ART position, in strips
 
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
@@ -808,6 +812,15 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-angy",5)==0){
       angy = fabs( atof(argv[i+1]) );
+    }
+    if (strncmp(argv[i],"-killran",8)==0){
+      killran = true;
+    }
+    if (strncmp(argv[i],"-killxran",9)==0){
+      killxran = true;
+    }
+    if (strncmp(argv[i],"-killuvran",10)==0){
+      killuvran = true;
     }
     if (strncmp(argv[i],"-ideal-vmm", 10)==0){
       ideal_vmm = true;
@@ -912,6 +925,12 @@ int main(int argc, char* argv[]) {
   printf("\r >> Generate muons with flat angle (x) from %f to %f", -angx, angx);
   cout << endl;
   printf("\r >> Generate muons with flat angle (y) from %f to %f", -angy, angy);
+  cout << endl;
+  printf("\r >> Killing one plane randomly: %s", (killran) ? "true" : "false");
+  cout << endl;
+  printf("\r >> Killing one X plane randomly: %s", (killxran) ? "true" : "false");
+  cout << endl;
+  printf("\r >> Killing one UV plane randomly: %s", (killuvran) ? "true" : "false");
   cout << endl;
   for (unsigned int i = 0; i < mm_eff.size(); i++){
     printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
@@ -1097,7 +1116,13 @@ int main(int argc, char* argv[]) {
     hists["h_phi"]  ->Fill(thy * 180/TMath::Pi());
 
     vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
-  
+    if (killran)
+      oct_hitmask[ran->Integer(8)] = 0;
+    if (killxran)
+      oct_hitmask[vector<int> {0, 1, 6, 7}[ran->Integer(4)]] = 0;
+    if (killuvran)
+      oct_hitmask[vector<int> {2, 3, 4, 5}[ran->Integer(4)]] = 0;
+
     vector<int> art_bc(NPLANES, -1.);
     double smallest_bc = 999999.;
     
@@ -1196,7 +1221,6 @@ int main(int argc, char* argv[]) {
     int ntrigroads;
     int ntrigroads_bkgonly = 0;
 
-
     std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i);
     hists["h_ntrig"]->Fill(ntrigroads);
     if (write_tree)
@@ -1212,7 +1236,7 @@ int main(int argc, char* argv[]) {
       if (angx < 0.1 && angy < 0.1)
         cout << "no triggered roads?" << endl;
       if (write_tree)
-	tree->Fill();
+        tree->Fill();
       continue;
     }
 
