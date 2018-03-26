@@ -222,8 +222,10 @@ int fiducial(double x, double y, string chamber) {
   return 0;
 }
 
-tuple<double,double> cosmic_angle(){
-  return make_tuple(0.,0.);
+tuple<double,double> cosmic_angle(double angx, double angy){
+  double thx = ran->Uniform(-angx, angx) * TMath::Pi()/180;
+  double thy = ran->Uniform(-angy, angy) * TMath::Pi()/180;
+  return make_tuple(thx,thy);
 }
 
 vector<Road*> create_roads(const GeoOctuplet& geometry, bool uvrflag, int m_xthr, int m_uvthr, string chamber, bool trapflag){
@@ -296,7 +298,7 @@ double predicted_rate(int strip, string chamber) {
   return rate*1000;
 }
 
-tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, string chamber, bool trapflag){
+tuple<double,double,double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, string chamber, double angx, double angy, bool trapflag){
 
   double x = 9e9;
   double y = 9e9;
@@ -314,7 +316,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
   
   double thx, thy;
 
-  std::tie(thx,thy) = cosmic_angle();
+  std::tie(thx,thy) = cosmic_angle(angx, angy);
 
   double avgz = 0.5*(zpos[0]+zpos[NPLANES-1]);
   double x_b, y_b;
@@ -326,7 +328,7 @@ tuple<double,double> generate_muon(vector<double> & xpos, vector<double> & ypos,
     xpos[j] = x_b;
     ypos[j] = y_b;
   }    
-  return make_tuple(x,y);
+  return make_tuple(x,y,thx,thy);
 }
 
 vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate, string chamber){
@@ -712,6 +714,9 @@ int main(int argc, char* argv[]) {
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
   double chamber_eff = -1;
 
+  double angx = 0;
+  double angy = 0;
+
   string histograms = "histograms";
 
   // coincidence params
@@ -797,6 +802,12 @@ int main(int argc, char* argv[]) {
       chamber_eff = atof(argv[i+1]);
       for (unsigned int i = 0; i < mm_eff.size(); i++)
         mm_eff[i] = chamber_eff;
+    }
+    if (strncmp(argv[i],"-angx",5)==0){
+      angx = fabs( atof(argv[i+1]) );
+    }
+    if (strncmp(argv[i],"-angy",5)==0){
+      angy = fabs( atof(argv[i+1]) );
     }
     if (strncmp(argv[i],"-ideal-vmm", 10)==0){
       ideal_vmm = true;
@@ -897,6 +908,10 @@ int main(int argc, char* argv[]) {
   printf("\r >> Using trapezoidal geometry: %s", (trapflag) ? "true" : "false");
   cout << endl;
   printf("\r >> Using thresholds (x, uv): (%d, %d)", m_xthr, m_uvthr);
+  cout << endl;
+  printf("\r >> Generate muons with flat angle (x) from %f to %f", -angx, angx);
+  cout << endl;
+  printf("\r >> Generate muons with flat angle (y) from %f to %f", -angy, angy);
   cout << endl;
   for (unsigned int i = 0; i < mm_eff.size(); i++){
     printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
@@ -1008,6 +1023,10 @@ int main(int argc, char* argv[]) {
   hists["h_nx_bkg"] = new TH1F("h_nx_bkg", "", 5, -0.5, 4.5);
   hists_2d["h_xres_nxbkg"] = new TH2D("h_xres_nxbkg", "h_xres_nxbkg", 5, -0.5, 4.5 , 122, -30.5, 30.5);
   hists_2d["h_xres_nxmuon"] = new TH2D("h_xres_nxmuon", "h_xres_nxmuon", 5, -0.5, 4.5 , 122, -30.5, 30.5);
+  hists["h_phi"]        = new TH1F("h_phi",        "", 100, -5, 5);
+  hists["h_phi_trig"]   = new TH1F("h_phi_trig",   "", 100, -5, 5);
+  hists["h_theta"]      = new TH1F("h_theta",      "", 100, -5, 5);
+  hists["h_theta_trig"] = new TH1F("h_theta_trig", "", 100, -5, 5);
 
   hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
@@ -1064,8 +1083,8 @@ int main(int argc, char* argv[]) {
     vector<double> xpos(NPLANES,-1.);
     vector<double> ypos(NPLANES,-1.);
     
-    double xmuon,ymuon;
-    std::tie(xmuon,ymuon) = generate_muon(xpos, ypos, zpos, string(chamberType), trapflag);
+    double xmuon,ymuon,thx,thy;
+    std::tie(xmuon,ymuon,thx,thy) = generate_muon(xpos, ypos, zpos, string(chamberType), angx, angy, trapflag);
 
     real_x_muon = xmuon;
     real_y_muon = ymuon;
@@ -1074,6 +1093,8 @@ int main(int argc, char* argv[]) {
       printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
     }
     hists_2d["h_xy_all"]->Fill(xmuon, ymuon);
+    hists["h_theta"]->Fill(thx * 180/TMath::Pi());
+    hists["h_phi"]  ->Fill(thy * 180/TMath::Pi());
 
     vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
   
@@ -1188,7 +1209,8 @@ int main(int argc, char* argv[]) {
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0){
       //      if (db)
-      cout << "no triggered roads?" << endl;
+      if (angx < 0.1 && angy < 0.1)
+        cout << "no triggered roads?" << endl;
       if (write_tree)
 	tree->Fill();
       continue;
@@ -1313,6 +1335,9 @@ int main(int argc, char* argv[]) {
     hists["h_nx_bkg"]->Fill(myslope.xbkg);
     hists_2d["h_xres_nxbkg"]->Fill(myslope.xbkg,myslope.xavg-xmuon);
     hists_2d["h_xres_nxmuon"]->Fill(myslope.xmuon,myslope.xavg-xmuon);
+
+    hists["h_theta_trig"]->Fill(thx * 180/TMath::Pi());
+    hists["h_phi_trig"]  ->Fill(thy * 180/TMath::Pi());
 
     if (myslope.uvbkg > 0){
       nevent_uvbkg++;
