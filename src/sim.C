@@ -828,6 +828,7 @@ int main(int argc, char* argv[]) {
       m_NSTRIPS = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-smear",6)==0){
+      m_sig_art_x = atoi(argv[i+1]);
       smear_art = true;
     }
     if (strncmp(argv[i],"-funcsmear",10)==0){
@@ -952,6 +953,8 @@ int main(int argc, char* argv[]) {
   vector<double> trig_x;
   vector<double> trig_y;
 
+  double dtheta;
+
   if (write_tree) {
 
     tree->Branch("EventNum",  &EventNum);
@@ -971,6 +974,7 @@ int main(int argc, char* argv[]) {
     tree->Branch("N_xmuon", &N_xmuon);
     tree->Branch("trig_x", &trig_x);
     tree->Branch("trig_y", &trig_y);
+    tree->Branch("dtheta", &dtheta);
 
   }
 
@@ -1065,6 +1069,7 @@ int main(int argc, char* argv[]) {
       N_xmuon.clear();
       trig_x.clear();
       trig_y.clear();
+      dtheta = -10.0;
     }
 
     if (nevents > 10){
@@ -1313,6 +1318,11 @@ int main(int argc, char* argv[]) {
       plttrk(myslope.slopehits, true, test, ntrigroads, fout);
     }
     double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
+      
+    if (write_tree){
+        dtheta = deltaMX;
+    }
+      
     if (db) {
       printf ("art (x,y): (%4.4f,%4.4f)", myslope.xavg, myslope.yavg);
       cout << endl;
