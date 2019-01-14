@@ -15,11 +15,17 @@ import time
 
 def main():
 
+    now = time.strftime("%Y-%m-%d-%Hh%Mm%Ss")
+
     ops = options()
     if not ops.j:
         fatal("Please provide a number of jobs to launch with -j")
     if not ops.a:
         fatal("Please provide a string of arguments for the sim with -a")
+    if not ops.o:
+        dirname = "batch-%s" % (now)
+        topdir  = "/n/atlasfs/atlascode/oct_sim" if not ops.NET3 else "/gpfs3/harvard/oct_sim"
+        ops.o   = os.path.join(topdir, dirname)
 
     # config dict steers everything
     config = {}
@@ -27,8 +33,8 @@ def main():
     config["time"]      = time.ctime()
     config["exe"]       = os.path.join(os.path.abspath(os.curdir), "sim")
     config["argparse"]  = ops.a
-    config["timestamp"] = time.strftime("%Y-%m-%d-%Hh%Mm%Ss")
-    config["outdir"]    = ops.o or "/n/atlasfs/atlascode/oct_sim/batch-%s" % (config["timestamp"])
+    config["timestamp"] = now
+    config["outdir"]    = ops.o
     config["user"]      = os.environ["USER"]
     config["submit"]    = not ops.d
 
@@ -62,9 +68,10 @@ def main():
 
         # run the job
         if config["submit"]:
-            cmd = "sbatch %s" % config["jobname"]
+            batch = "sbatch" if not ops.NET3 else "qsub -V -q tier3"
+            cmd = "%s %s" % (batch, config["jobname"])
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            time.sleep(2)
+            time.sleep(1)
             stdout, stderr = proc.communicate()
             double_check(stdout, stderr, cmd)
 
@@ -77,7 +84,9 @@ def main():
     print
 
 def template():
-    return """#!/bin/bash
+    ops = options()
+    if not ops.NET3:
+        return """#!/bin/bash
 #
 #SBATCH -p pleiades
 #SBATCH -t 1-0:0:0
@@ -96,11 +105,28 @@ def template():
 %(exe)s %(args)s
 """
 
+    else:
+        return """#!/bin/bash
+#
+#$ -o %(jobdir)s/stdout_$JOB_ID.txt
+#$ -e %(jobdir)s/stderr_$JOB_ID.txt
+#
+# jobname   :: %(jobname)s
+# time      :: %(time)s
+# user      :: %(user)s
+# generated :: %(exe)s
+# jobdir    :: %(jobdir)s
+
+%(exe)s %(args)s
+"""
+
 def double_check(stdout, stderr, cmd):
+
+    ops = options()
 
     # parse stdout for job cluster (just 1 line)
     if stdout:
-        if "Submitted batch job" not in stdout:
+        if (not ops.NET3 and "Submitted batch job" not in stdout) or (ops.NET3 and "has been submitted" not in stdout):
             fatal("Could not confirm job when parsing stdout: %s" % (stdout))
     else:
         tries = 1
@@ -120,10 +146,11 @@ def fatal(msg):
 
 def options():
     parser = argparse.ArgumentParser(usage=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-a", default=None,        help="String of arguments to pass to ./sim (excluding -o)")
-    parser.add_argument("-j", default=None,        help="Number of jobs to launch")
-    parser.add_argument("-o", default=None,        help="Output file name")
-    parser.add_argument("-d", action="store_true", help="Dry run: do everything except submit")
+    parser.add_argument("-a",     default=None,        help="String of arguments to pass to ./sim (excluding -o)")
+    parser.add_argument("-j",     default=None,        help="Number of jobs to launch")
+    parser.add_argument("-o",     default=None,        help="Output file name")
+    parser.add_argument("-d",     action="store_true", help="Dry run: do everything except submit")
+    parser.add_argument("--NET3", action="store_true", help="For use at the NET3")
     return parser.parse_args()
 
 

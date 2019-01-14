@@ -38,7 +38,7 @@
 using namespace std;
 
 TRandom3 *ran = new TRandom3(time(NULL));
-
+TF1 *cosmic_dist = new TF1("cosmic_dist", "cos(x)*cos(x)", -0.3, 0.3);
 
 bool db = false; // debug output flag
 
@@ -222,9 +222,17 @@ int fiducial(double x, double y, string chamber) {
   return 0;
 }
 
-tuple<double,double> cosmic_angle(double angx, double angy){
-  double thx = ran->Uniform(-angx, angx) * TMath::Pi()/180;
-  double thy = ran->Uniform(-angy, angy) * TMath::Pi()/180;
+tuple<double,double> cosmic_angle(int angcos, double angx, double angy){
+  double thx,thy;
+  double deg2rad = TMath::Pi()/180;
+  if (angcos){
+    thx = (angx > 0) ? cosmic_dist->GetRandom(-angx*deg2rad, angx*deg2rad) : 0;
+    thy = (angy > 0) ? cosmic_dist->GetRandom(-angy*deg2rad, angy*deg2rad) : 0;
+  }
+  else{
+    thx = ran->Uniform(-angx, angx) * deg2rad;
+    thy = ran->Uniform(-angy, angy) * deg2rad;
+  }
   return make_tuple(thx,thy);
 }
 
@@ -298,7 +306,7 @@ double predicted_rate(int strip, string chamber) {
   return rate*1000;
 }
 
-tuple<double,double,double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, string chamber, double angx, double angy, bool trapflag){
+tuple<double,double,double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, string chamber, int angcos, double angx, double angy, bool trapflag){
 
   double x = 9e9;
   double y = 9e9;
@@ -316,7 +324,7 @@ tuple<double,double,double,double> generate_muon(vector<double> & xpos, vector<d
   
   double thx, thy;
 
-  std::tie(thx,thy) = cosmic_angle(angx, angy);
+  std::tie(thx,thy) = cosmic_angle(angcos, angx, angy);
 
   double avgz = 0.5*(zpos[0]+zpos[NPLANES-1]);
   double x_b, y_b;
@@ -709,6 +717,10 @@ int main(int argc, char* argv[]) {
   int m_bcwind = 8;
   int m_sig_art = 32;
 
+  int killran   = 0;
+  int killxran  = 0;
+  int killuvran = 0;
+
   int m_sig_art_x = 1; // smear ART position, in strips
 
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
@@ -716,6 +728,7 @@ int main(int argc, char* argv[]) {
 
   double angx = 0;
   double angy = 0;
+  int angcos  = 0;
 
   string histograms = "histograms";
 
@@ -808,6 +821,18 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-angy",5)==0){
       angy = fabs( atof(argv[i+1]) );
+    }
+    if (strncmp(argv[i],"-angcos",7)==0){
+      angcos = 1;
+    }
+    if (strncmp(argv[i],"-killran",8)==0){
+      killran = true;
+    }
+    if (strncmp(argv[i],"-killxran",9)==0){
+      killxran = true;
+    }
+    if (strncmp(argv[i],"-killuvran",10)==0){
+      killuvran = true;
     }
     if (strncmp(argv[i],"-ideal-vmm", 10)==0){
       ideal_vmm = true;
@@ -910,9 +935,17 @@ int main(int argc, char* argv[]) {
   cout << endl;
   printf("\r >> Using thresholds (x, uv): (%d, %d)", m_xthr, m_uvthr);
   cout << endl;
-  printf("\r >> Generate muons with flat angle (x) from %f to %f", -angx, angx);
+  printf("\r >> Generate muons with cosmic distribution: %s", (angcos) ? "true" : "false");
   cout << endl;
-  printf("\r >> Generate muons with flat angle (y) from %f to %f", -angy, angy);
+  printf("\r >> Generate muons with angle (x) from %f to %f", -angx, angx);
+  cout << endl;
+  printf("\r >> Generate muons with angle (y) from %f to %f", -angy, angy);
+  cout << endl;
+  printf("\r >> Killing one plane randomly: %s", (killran) ? "true" : "false");
+  cout << endl;
+  printf("\r >> Killing one X plane randomly: %s", (killxran) ? "true" : "false");
+  cout << endl;
+  printf("\r >> Killing one UV plane randomly: %s", (killuvran) ? "true" : "false");
   cout << endl;
   for (unsigned int i = 0; i < mm_eff.size(); i++){
     printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
@@ -1027,10 +1060,10 @@ int main(int argc, char* argv[]) {
   hists["h_nx_bkg"] = new TH1F("h_nx_bkg", "", 5, -0.5, 4.5);
   hists_2d["h_xres_nxbkg"] = new TH2D("h_xres_nxbkg", "h_xres_nxbkg", 5, -0.5, 4.5 , 122, -30.5, 30.5);
   hists_2d["h_xres_nxmuon"] = new TH2D("h_xres_nxmuon", "h_xres_nxmuon", 5, -0.5, 4.5 , 122, -30.5, 30.5);
-  hists["h_phi"]        = new TH1F("h_phi",        "", 100, -5, 5);
-  hists["h_phi_trig"]   = new TH1F("h_phi_trig",   "", 100, -5, 5);
-  hists["h_theta"]      = new TH1F("h_theta",      "", 100, -5, 5);
-  hists["h_theta_trig"] = new TH1F("h_theta_trig", "", 100, -5, 5);
+  hists["h_phi"]        = new TH1F("h_phi",        "", 200, -10, 10);
+  hists["h_phi_trig"]   = new TH1F("h_phi_trig",   "", 200, -10, 10);
+  hists["h_theta"]      = new TH1F("h_theta",      "", 200, -10, 10);
+  hists["h_theta_trig"] = new TH1F("h_theta_trig", "", 200, -10, 10);
 
   hists_2d["h_xy_all"]  = new TH2D("h_xy_all",  "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
   hists_2d["h_xy_trig"] = new TH2D("h_xy_trig", "",  1000, xlow-100, xhigh+100, 1000, ylow-100, yhigh+100);
@@ -1089,7 +1122,7 @@ int main(int argc, char* argv[]) {
     vector<double> ypos(NPLANES,-1.);
     
     double xmuon,ymuon,thx,thy;
-    std::tie(xmuon,ymuon,thx,thy) = generate_muon(xpos, ypos, zpos, string(chamberType), angx, angy, trapflag);
+    std::tie(xmuon,ymuon,thx,thy) = generate_muon(xpos, ypos, zpos, string(chamberType), angcos, angx, angy, trapflag);
 
     real_x_muon = xmuon;
     real_y_muon = ymuon;
@@ -1102,7 +1135,13 @@ int main(int argc, char* argv[]) {
     hists["h_phi"]  ->Fill(thy * 180/TMath::Pi());
 
     vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
-  
+    if (killran)
+      oct_hitmask[ran->Integer(8)] = 0;
+    if (killxran)
+      oct_hitmask[vector<int> {0, 1, 6, 7}[ran->Integer(4)]] = 0;
+    if (killuvran)
+      oct_hitmask[vector<int> {2, 3, 4, 5}[ran->Integer(4)]] = 0;
+
     vector<int> art_bc(NPLANES, -1.);
     double smallest_bc = 999999.;
     
@@ -1201,7 +1240,6 @@ int main(int argc, char* argv[]) {
     int ntrigroads;
     int ntrigroads_bkgonly = 0;
 
-
     std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i);
     hists["h_ntrig"]->Fill(ntrigroads);
     if (write_tree)
@@ -1214,10 +1252,10 @@ int main(int argc, char* argv[]) {
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0){
       //      if (db)
-      if (angx < 0.1 && angy < 0.1)
+      if (angx < 0.1 && angy < 0.1 && !angcos)
         cout << "no triggered roads?" << endl;
       if (write_tree)
-	tree->Fill();
+        tree->Fill();
       continue;
     }
 
