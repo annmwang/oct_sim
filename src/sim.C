@@ -985,7 +985,7 @@ int main(int argc, char* argv[]) {
 
   vector<double> trig_x;
   vector<double> trig_y;
-
+    
   double dtheta;
 
   if (write_tree) {
