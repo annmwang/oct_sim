@@ -1356,6 +1356,7 @@ int main(int argc, char* argv[]) {
       TString test2 = Form("event_disp_alt_%d",i);
       plttrk(myslope.slopehits, true, test, ntrigroads, fout);
     }
+    double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
       
     if (db) {
       printf ("art (x,y): (%4.4f,%4.4f)", myslope.xavg, myslope.yavg);
