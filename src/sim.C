@@ -853,6 +853,9 @@ int main(int argc, char* argv[]) {
       m_NSTRIPS = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-smear",6)==0){
+      smear_art = true;
+    }
+    if (strncmp(argv[i],"-smearstrips",12)==0){
       m_sig_art_x = atoi(argv[i+1]);
       smear_art = true;
     }
