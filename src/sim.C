@@ -986,7 +986,7 @@ int main(int argc, char* argv[]) {
   vector<double> trig_x;
   vector<double> trig_y;
     
-  double dtheta;
+  vector<double> dtheta;
 
   if (write_tree) {
 
@@ -1102,7 +1102,7 @@ int main(int argc, char* argv[]) {
       N_xmuon.clear();
       trig_x.clear();
       trig_y.clear();
-      dtheta = -10.0;
+      dtheta.clear();
     }
 
     if (nevents > 10){
@@ -1358,7 +1358,7 @@ int main(int argc, char* argv[]) {
     double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
       
     if (write_tree){
-        dtheta = deltaMX;
+        dtheta.push_back(deltaMX);
     }
       
     if (db) {
