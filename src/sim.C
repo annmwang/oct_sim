@@ -1318,6 +1318,7 @@ int main(int argc, char* argv[]) {
         Hit_ages.push_back(slopehits_ages);
         trig_x.push_back(m_slopes[k].xavg);
         trig_y.push_back(m_slopes[k].yavg);
+        dtheta.push_back( TMath::ATan(m_slopes[k].mxl) );
       }
 
       if (m_slopes[k].imuonhits == 0)
@@ -1354,11 +1355,6 @@ int main(int argc, char* argv[]) {
       TString test = Form("event_disp_%d",i);
       TString test2 = Form("event_disp_alt_%d",i);
       plttrk(myslope.slopehits, true, test, ntrigroads, fout);
-    }
-    double deltaMX = TMath::ATan(myslope.mxl); // change to subtract angle of muon, which is 0 right now
-      
-    if (write_tree){
-        dtheta.push_back(deltaMX);
     }
       
     if (db) {
