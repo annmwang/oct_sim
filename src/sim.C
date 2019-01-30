@@ -369,6 +369,52 @@ vector<Hit*> generate_bkg(int start_bc, const GeoOctuplet& geometry, int bkgrate
   return bkghits;
 }
 
+vector<Hit*> generate_bkg_trigger_ish(int start_bc, const GeoOctuplet& geometry, int bkgrate, string chamber, int nhits){
+
+  vector<Hit*> bkghits;
+
+  // randomly choose which planes are hit
+  vector<int> planes;
+  for (int i = 0; i < NPLANES; i++)
+    planes.push_back(i);
+  for (int i = 0; i < NPLANES - nhits; i++)
+    planes.erase(planes.begin() + ran->Integer(planes.size()));
+
+  // for the plane-dependent offsets
+  auto dummy = new Road(&geometry, 0, 0, 0);
+
+  // randomly choose a general location for a bkg trigger
+  int seed_x  = ran->Integer(NSTRIPS);
+  int seed_u  = seed_x + ran->Integer(2*UVFACTOR*XROAD) - UVFACTOR*XROAD;
+  int seed_v  = abs(2*seed_x - seed_u); // + ran->Integer(XROAD) - XROAD/2;
+  int seed_bc = start_bc;
+
+  // assume uniform distribution of background
+  for (auto j: planes) {
+    Hit* newhit = nullptr;
+
+    // randomly choose a strip within the general location
+    // give it a random time within the BC window
+    int strip  = 0;
+    int offset = dummy->Offset(j);
+    int rstrip = ran->Integer(6*XROAD) - 3*XROAD;
+    if      (j<=1 || j>=6) strip = seed_x - offset + rstrip;
+    else if (j==2 || j==4) strip = seed_u - offset + rstrip;
+    else if (j==3 || j==5) strip = seed_v - offset + rstrip;
+    //if      (j<=1 || j>=6) strip = seed_x - offset + ran->Integer(6*XROAD) - 3*XROAD;
+    //else if (j==2 || j==4) strip = seed_u - offset + ran->Integer(6*XROAD) - 3*XROAD;
+    //else if (j==3 || j==5) strip = seed_v - offset + ran->Integer(6*XROAD) - 3*XROAD;
+    else
+      cout << "Error: j = " << j << endl;
+
+    newhit = new Hit(j, seed_bc + ran->Integer(bc_wind), strip, true, geometry);
+    bkghits.push_back(newhit);
+  }
+
+  delete dummy;
+  return bkghits;
+}
+
 vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff){
   //gives detector response to muon, returns list of which planes registered hit
   
@@ -730,6 +776,8 @@ int main(int argc, char* argv[]) {
   double angy = 0;
   int angcos  = 0;
 
+  int bkg_trig_nhits = 0;
+
   string histograms = "histograms";
 
   // coincidence params
@@ -854,6 +902,9 @@ int main(int argc, char* argv[]) {
     }
     if (strncmp(argv[i],"-smear",6)==0){
       smear_art = true;
+    }
+    if (strncmp(argv[i],"-bkgtrig", 8)==0){
+      bkg_trig_nhits = atoi(argv[i+1]);
     }
     if (strncmp(argv[i],"-smearstrips",12)==0){
       m_sig_art_x = atoi(argv[i+1]);
@@ -1216,7 +1267,11 @@ int main(int argc, char* argv[]) {
     
     vector<Hit*> all_hits = hits;    
     if (bkgflag){
-      vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate, string(chamberType));
+      vector<Hit*> bkghits;
+      if (bkg_trig_nhits > 0)
+        bkghits = generate_bkg_trigger_ish(smallest_bc, *GEOMETRY, bkgrate, string(chamberType), bkg_trig_nhits);
+      else
+        bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate, string(chamberType));
       if (db)
         cout << "Nbkg hits: " << bkghits.size() << endl;
       all_hits.insert(all_hits.end(), bkghits.begin(), bkghits.end());
@@ -1255,9 +1310,9 @@ int main(int argc, char* argv[]) {
       cout << "Ntriggered roads: " << ntrigroads << endl;
     if (ntrigroads == 0){
       //      if (db)
-      if (angx < 0.1 && angy < 0.1 && !angcos)
+      if (angx < 0.1 && angy < 0.1 && !angcos && !bkgonly)
         cout << "no triggered roads?" << endl;
-      if (write_tree)
+      if (write_tree && bkg_trig_nhits == 0)
         tree->Fill();
       continue;
     }
