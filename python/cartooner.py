@@ -24,10 +24,12 @@ def main():
     
     # road parameters
     roi = 29
+    # spread_up_xx = 0.0
     spread_up_xx = 0.5
     spread_dn_xx = 0
     #spread_up_uv = 1
     #spread_dn_uv = 1
+    # spread_up_uv = 0.0
     spread_up_uv = 0.5
     spread_dn_uv = 0
 
@@ -45,6 +47,7 @@ def main():
     roadv_2p = Road("V", number=roi-2, size=8, spread_up=spread_up_uv, spread_dn=spread_dn_uv).poly(x_lo, x_hi)
     roadu_2n = Road("U", number=roi-2, size=8, spread_up=spread_up_uv, spread_dn=spread_dn_uv).poly(x_lo, x_hi)
     roadv_2n = Road("V", number=roi+2, size=8, spread_up=spread_up_uv, spread_dn=spread_dn_uv).poly(x_lo, x_hi)
+    roadx2   = Road("X", number=roi+1, size=8, spread_up=spread_up_xx, spread_dn=spread_dn_xx).poly(x_lo, x_hi)
 
     road_test = Road("X", number=roi, size=8, spread_up=0.5, spread_dn=0)
     road_test.dump()
@@ -57,6 +60,9 @@ def main():
     roaduv_2p = intersection(roadu_2p, roadv_2p)
     roaduv_2n = intersection(roadu_2n, roadv_2n)
 
+    roaduv_1p1n = intersection(roadu_1p, roadv_1n)
+    roaduv_1n1p = intersection(roadu_1n, roadv_1p)
+
     roaduvx_0  = intersection(roaduv_0,  roadx)
     roaduvx_1p = intersection(roaduv_1p, roadx)
     roaduvx_1n = intersection(roaduv_1n, roadx)
@@ -64,24 +70,39 @@ def main():
     roaduvx_2n = intersection(roaduv_2n, roadx)
 
     road_u1p_v00 = intersection(roadu_1p, roadv_0)
+    road_u00_v1p = intersection(roadu_0,  roadv_1p)
     road_u2p_v1p = intersection(roadu_2p, roadv_1p)
 
     road_u1p_v00_x = intersection(roadx, road_u1p_v00)
     road_u2p_v1p_x = intersection(roadx, road_u2p_v1p)
     
-    for ro in [roaduvx_0, 
-               roaduvx_1p, 
+    for ro in [roaduv_0,
+               roaduv_1p,
+               roaduv_1n,
+               roaduvx_0,
+               roaduvx_1p,
                roaduvx_1n,
+               road_u1p_v00,
+               road_u2p_v1p,
+               road_u00_v1p,
                road_u1p_v00_x,
                road_u2p_v1p_x,
                ]:
-        ro.SetFillColor(ROOT.kBlack)
-        ro.SetFillStyle(3002)
+        # ro.SetFillColor(ROOT.kBlack)
+        # ro.SetFillStyle(3003)
+        ro.SetFillColor(210)
+
+    if True:
+        roaduv_0     .SetFillColorAlpha(210,          0.7)
+        roaduv_1p    .SetFillColorAlpha(ROOT.kRed,    0.7)
+        road_u1p_v00 .SetFillColorAlpha(ROOT.kBlue,   0.7)
+        road_u00_v1p .SetFillColorAlpha(ROOT.kViolet, 0.7)
 
     # road loop!
     roadloop = 10
     roaddict = {}
-    for ir in xrange(1, roadloop):
+    # for ir in range(1, roadloop):
+    for ir in range(0, roadloop):
         num = roi
         tag = str(ir)
         roaddict["u"+tag+"p"] = Road("U", number=num+ir, size=8, spread_up=spread_up_uv, spread_dn=spread_dn_uv).poly(x_lo, x_hi)
@@ -92,16 +113,34 @@ def main():
         roaddict["uv"+tag+"p"] = intersection(roaddict["u"+tag+"p"], roaddict["v"+tag+"p"])
         roaddict["uv"+tag+"n"] = intersection(roaddict["u"+tag+"n"], roaddict["v"+tag+"n"])
 
+        if ir > 0:
+            roaddict["uv"+tag+"p"+str(ir-1)+"p"] = intersection(roaddict["u"+tag+"p"], roaddict["v"+str(ir-1)+"p"])
+            roaddict["uv"+tag+"n"+str(ir-1)+"n"] = intersection(roaddict["u"+tag+"n"], roaddict["v"+str(ir-1)+"n"])
+            roaddict["uv"+str(ir-1)+"p"+tag+"p"] = intersection(roaddict["u"+str(ir-1)+"p"], roaddict["v"+tag+"p"])
+            roaddict["uv"+str(ir-1)+"n"+tag+"n"] = intersection(roaddict["u"+str(ir-1)+"n"], roaddict["v"+tag+"n"])
+
         roaddict["uvx"+tag+"p"] = intersection(roaddict["uv"+tag+"p"], roadx)
         roaddict["uvx"+tag+"n"] = intersection(roaddict["uv"+tag+"n"], roadx)
+    for key in roaddict:
+        if key.startswith("uv"):
+            roaddict[key].SetFillColor(210)
 
     roads = [#roadu, roadv,
              roadx, 
+             #roadx2,
              #roadu_l, roadv_l,
              #roadu_r, roadv_r,
-             roadu_0, roadv_0,
-             roadu_1p, roadv_1p,
+             #roadu_0, roadv_0,
+             #roadu_1p, roadv_1p,
+             #roadu_2p, roadv_2n,
              #roaduv_0,
+             road_u1p_v00,
+             road_u00_v1p,
+             #roaduv_1p1n,
+             #roaduv_1n1p,
+             roaduv_0,
+             roaduv_1p,
+             ###roaduv_1n,
              #roaduvx_1p,
              #roaduvx_2n,
              #roaduvx_1n,
@@ -122,10 +161,14 @@ def main():
              #road_u1p_v00_x,
              #road_u2p_v1p_x,
              ]
-    for ir in xrange(1, roadloop):
+    for ir in range(1, roadloop):
         tag = str(ir)
-        #roads.append( roaddict["uvx"+tag+"p"] )
-        #roads.append( roaddict["uvx"+tag+"n"] )
+        # roads.append( roaddict["uv"+tag+"p"] )
+        # roads.append( roaddict["uv"+tag+"n"] )
+        # roads.append( roaddict["uv"+tag+"p"+str(ir-1)+"p"] )
+        # roads.append( roaddict["uv"+tag+"n"+str(ir-1)+"n"] )
+        # roads.append( roaddict["uv"+str(ir-1)+"p"+tag+"p"] )
+        # roads.append( roaddict["uv"+str(ir-1)+"n"+tag+"n"] )
     roads = filter(lambda ro: ro, roads)
 
     canv = ROOT.TCanvas("canv", "canv", 800, 800)
@@ -150,16 +193,16 @@ class Road():
         self.strip_hi  = int(self.offset() + self.size * (number + self.spread_up + 1))
 
     def dump(self):
-        print
-        print "Road info"
-        print "%-10s :: %s" % ("type",      self.type)
-        print "%-10s :: %s" % ("size",      self.size)
-        print "%-10s :: %s" % ("spread_up", self.spread_up)
-        print "%-10s :: %s" % ("spread_dn", self.spread_dn)
-        print "%-10s :: %s" % ("strip_lo",  self.strip_lo)
-        print "%-10s :: %s" % ("strip_hi",  self.strip_hi)
-        print "%-10s :: %s" % ("offset",    self.offset())
-        print
+        print("")
+        print("Road info")
+        print("%-10s :: %s" % ("type",      self.type))
+        print("%-10s :: %s" % ("size",      self.size))
+        print("%-10s :: %s" % ("spread_up", self.spread_up))
+        print("%-10s :: %s" % ("spread_dn", self.spread_dn))
+        print("%-10s :: %s" % ("strip_lo",  self.strip_lo))
+        print("%-10s :: %s" % ("strip_hi",  self.strip_hi))
+        print("%-10s :: %s" % ("offset",    self.offset()))
+        print("")
 
     def points(self, edge_lo, edge_hi):
         delta = edge_hi - edge_lo
@@ -239,7 +282,7 @@ def points(poly):
     # https://root-forum.cern.ch/t/pydoublebuffer/14042/2
     xs = poly.GetX()
     ys = poly.GetY()
-    return [ (xs[i], ys[i]) for i in xrange(poly.GetN()) ]
+    return [ (xs[i], ys[i]) for i in range(poly.GetN()) ]
 
 def intersection(obj1, obj2, debug=False):
 
@@ -299,14 +342,14 @@ def intersection(obj1, obj2, debug=False):
         points2 = points(obj2)
 
         if debug:
-            print "Points 1"
+            print("Points 1")
             for p in points1:
-                print p
-            print
-            print "Points 2"
+                print(p)
+            print("")
+            print("Points 2")
             for p in points2:
-                print p
-            print
+                print(p)
+            print("")
 
         # first: make all pairs of line segments, and look for overlap
         for (x1a, y1a) in points1[:-1]:
@@ -322,14 +365,14 @@ def intersection(obj1, obj2, debug=False):
                 if debug:
                     db = "Segs: (%f, %f)-(%f, %f) vs. (%f, %f)-(%f, %f) :: %s"
                     db = db % (x1a, y1a, x1b, y1b, x2a, y2a, x2b, y2b, intersection(line1, line2))
-                    print db
+                    print(db)
 
         if debug:
-            print
-            print "PoI, segment crossings"
+            print("")
+            print("PoI, segment crossings")
             for p in points_of_intersection:
-                print p
-            print
+                print(p)
+            print("")
 
         # second: check for points which lie within other polygon
         # https://stackoverflow.com/questions/217578
@@ -337,32 +380,32 @@ def intersection(obj1, obj2, debug=False):
             if within(obj2, x, y, debug):
                 points_of_intersection.append( (x, y) )
                 if debug:
-                    print "Found within obj2", x, y
+                    print("Found within obj2", x, y)
         for (x, y) in points2[:-1]:
             if within(obj1, x, y, debug):
                 points_of_intersection.append( (x, y) )
                 if debug:
-                    print "Found within obj1", x, y
+                    print("Found within obj1", x, y)
 
         if not points_of_intersection:
             return None
 
         if debug:
-            print
-            print "PoI, unordered"
+            print("")
+            print("PoI, unordered")
             for p in points_of_intersection:
-                print p
+                print(p)
 
         points_of_intersection = list(set(points_of_intersection))
         points_ordered = order(points_of_intersection)
         points_ordered.append( points_ordered[0] )
 
         if debug:
-            print
-            print "PoI, ordered"
+            print("")
+            print("PoI, ordered")
             for p in points_ordered:
-                print p
-            print
+                print(p)
+            print("")
 
         xs = [p[0] for p in points_ordered]
         ys = [p[1] for p in points_ordered]
@@ -374,7 +417,7 @@ def within(poly, x, y, debug=False):
     yinf = 2*max([p[1] for p in ps])
     line_inf = ROOT.TLine(x, y, xinf, yinf)
     nint = 0
-    for ip in xrange(len(ps)-1):
+    for ip in range(len(ps)-1):
         x1, y1 = ps[ip]
         x2, y2 = ps[ip+1]
         line_poly = ROOT.TLine(x1, y1, x2, y2)
@@ -383,7 +426,7 @@ def within(poly, x, y, debug=False):
         if debug:
             db = "(%f, %f)-(%f, %f) vs (%f, %f)-(%f, %f) :: %s"
             db = db % (x, y, xinf, yinf, x1, y1, x2, y2, intersection(line_inf, line_poly))
-            print db
+            print(db)
     return nint % 2
 
 def order(points):
