@@ -40,8 +40,13 @@ nBkgRates = len(bkgRates)
 counter = 0
 for nE in range(0,nNEvents):
 	for nB in range(0,nBkgRates):
-		outFileName = outDir + '/' + outFilePrefix + '_nEvents{}_bkgRate{}'.format(nEvents[nE],bkgRates[nB])
-		with open("script_%d.sh"%counter,"w") as text_file:
+		tempDir = outDir + '/job_{}_{}'.format(nEvents[nE],bkgRates[nB])
+		print(tempDir)
+		if os.path.isdir(tempDir) == False:
+			os.system("mkdir {}".format(tempDir))
+		outFileName = tempDir + '/' + outFilePrefix + '_nEvents{}_bkgRate{}'.format(nEvents[nE],bkgRates[nB])
+		print("{}/script_{}.sh".format(tempDir,counter))
+		with open("{}/script_{}.sh".format(tempDir,counter),"w") as text_file:
                         text_file.write(
                                 """ #!/bin/bash
 
@@ -54,7 +59,7 @@ for nE in range(0,nNEvents):
 
                                 printf "###########"
                                 
-                                ./sim -n {0} -ch {1} -b {2} -o {3}.root -uvr -thrx {4} -thruv {5} -tree
+                                ./sim -n {0} -ch {1} -b {2} -o \'{3}.root\' -uvr -thrx {4} -thruv {5} -tree
 
                                 """.format(nEvents[nE],                                                                                                    
                                         chamber,                                                                                                              
@@ -63,9 +68,10 @@ for nE in range(0,nNEvents):
                                         xCoincidenceThreshold,                                                                                            
                                         uvCoincidenceThreshold)
                                 )
-                
-                os.system("chmod +x script_%d.sh"%counter)
+		print("chmod +x {}/script_{}.sh".format(tempDir,counter))
+		os.system("chmod +x {}/script_{}.sh".format(tempDir,counter))
                 # os.system("source script_%d.sh"%counter); break;
-                os.system("qsub -V -cwd -q tier3 script_%d.sh"%counter)
+                print("qsub -V -cwd -q tier3 -o {}.log {}/script_{}.sh".format(outFileName,tempDir,counter))
+		os.system("qsub -V -cwd -q tier3 -o {}.log {}/script_{}.sh".format(outFileName,tempDir,counter))
                 counter += 1
 
