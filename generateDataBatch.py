@@ -37,24 +37,35 @@ os.system("make")
 nNEvents = len(nEvents)
 nBkgRates = len(bkgRates)
 
+counter = 0
 for nE in range(0,nNEvents):
 	for nB in range(0,nBkgRates):
 		outFileName = outDir + '/' + outFilePrefix + '_nEvents{}_bkgRate{}'.format(nEvents[nE],bkgRates[nB])
-		os.system("qsub -V -q tier3 batch_job.sh {} {} {} {} {} {} {}".format(                      
-			nEvents[nE],                                                                                                    
-                        chamber,                                                                                                              
-                        bkgRates[nB],                                                                                                   
-                        outFileName,                                                                                              
-                        xCoincidenceThreshold,                                                                                            
-                        uvCoincidenceThreshold,                                                                      
-                        outFileName))
-		'''os.system("qsub -q tier3 ./sim -n {} -ch {} -b {} -o {}.root -uvr -thrx {} -thruv {} -tree >> {}.log &".format(
-                        nEvents[nE],
-                        chamber,
-                        bkgRates[nB],
-                        outFileName,
-                        xCoincidenceThreshold,
-                        uvCoincidenceThreshold,
-                        outFileName), shell=True
-                )'''
+		with open("script_%d.sh"%counter,"w") as text_file:
+                        text_file.write(
+                                """ #!/bin/bash
+
+                                printf "Start time: "; /bin/date
+                                printf "Job is running on node: "; /bin/hostname
+                                printf "Job running as user: "; /usr/bin/id
+                                printf "Job is running in directory: "; /bin/pwd
+                                echo
+                                echo "Working hard..."
+
+                                printf "###########"
+                                
+                                ./sim -n {0} -ch {1} -b {2} -o {3}.root -uvr -thrx {4} -thruv {5} -tree
+
+                                """.format(nEvents[nE],                                                                                                    
+                                        chamber,                                                                                                              
+                                        bkgRates[nB],                                                                                                   
+                                        outFileName,                                                                                              
+                                        xCoincidenceThreshold,                                                                                            
+                                        uvCoincidenceThreshold)
+                                )
+                
+                os.system("chmod +x script_%d.sh"%counter)
+                # os.system("source script_%d.sh"%counter); break;
+                os.system("qsub -V -cwd -q tier3 script_%d.sh"%counter)
+                counter += 1
 
