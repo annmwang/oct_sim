@@ -40,7 +40,7 @@ nBkgRates = len(bkgRates)
 for nE in range(0,nNEvents):
 	for nB in range(0,nBkgRates):
 		outFileName = outDir + '/' + outFilePrefix + '_nEvents{}_bkgRate{}'.format(nEvents[nE],bkgRates[nB])
-		os.system("qsub -q tier3 batch_job.sh {} {} {} {} {} {} {}".format(                      
+		os.system("qsub -V -q tier3 batch_job.sh {} {} {} {} {} {} {}".format(                      
 			nEvents[nE],                                                                                                    
                         chamber,                                                                                                              
                         bkgRates[nB],                                                                                                   
