@@ -1,0 +1,12 @@
+for i in $(seq 0 100 1000); do
+./sim -n 10000 -ch large -b $i -o "$i".root -uvr -thrx 3 -thruv 3 -tree &
+done
+
+for i in $(seq 2000 1000 10000); do
+./sim -n 10000 -ch large -b $i -o "$i".root -uvr -thrx 3 -thruv 3 -tree &
+done
+
+for i in $(seq 20000 10000 70000); do
+./sim -n 10000 -ch large -b $i -o "$i".root -uvr -thrx 3 -thruv 3 -tree &
+done
+
