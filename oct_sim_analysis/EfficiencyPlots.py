@@ -77,7 +77,7 @@ for direct in list_of_dirs:
 
 # ## Plot a sample distribution
 
-# In[6]:
+# In[5]:
 
 
 '''
@@ -98,7 +98,7 @@ plt.show()
 
 # ## Compute the distributions of interest
 
-# In[17]:
+# In[6]:
 
 
 # Calculate the number of triggered muons 
@@ -130,7 +130,7 @@ print('Finished!')
 print('----------------------------------------')
 
 
-# In[10]:
+# In[7]:
 
 
 # Compute the group, detector, and trigger efficiencies
@@ -149,13 +149,13 @@ for job in data:
     job['trigEff_err'] = trigEff_err
 
 
-# In[11]:
+# In[8]:
 
 
 print('Sample trigger probability {}, efficiency {}, and error {}'.format(data[0]['probTrig'],data[0]['trigEff'],data[0]['trigEff_err']))
 
 
-# In[21]:
+# In[9]:
 
 
 # Dictionary to store the data
@@ -166,7 +166,7 @@ hist_data = {'BkgRates':[job['bkgRate'] for job in data],
     }
 
 
-# In[22]:
+# In[10]:
 
 
 # a dictionary to hold plotting information about the observables
@@ -185,13 +185,13 @@ legend_opts = {'handlelength': 2.0, 'loc': 'lower left', 'frameon': False, 'nump
 
 # ## Plot Background Rate vs Trigger Efficiency for Each Trigger Probability
 
-# In[23]:
+# In[11]:
 
 
 ob = obs['TrigEff_BkgRate_ProbTrig']
 
 
-# In[25]:
+# In[12]:
 
 
 # Sort the data based on probability of trigger
@@ -212,7 +212,7 @@ for key in prob_dict.keys():
     prob_dict[key]['TrigEff_errs'] = [i[2] for i in sorted_data]
 
 
-# In[33]:
+# In[13]:
 
 
 fig, [ax0, ax1] = modplot.axes(**ob)
@@ -224,7 +224,7 @@ ax1.set_xscale("log")
 for key in prob_dict.keys():
 
     # plot the distribution
-    ax0.errorbar(prob_dict[key]['BkgRates'],prob_dict[key]['TrigEffs'],yerr=prob_dict[key]['TrigEff_errs'], **histStyle, label='Trigger Probability {}'.format(key))
+    ax0.errorbar(prob_dict[key]['BkgRates'],prob_dict[key]['TrigEffs'],yerr=prob_dict[key]['TrigEff_errs'], label='Trigger Probability {}'.format(key), **histStyle)
 
 ax1.plot(ob['xlim'], [1, 1], '--', color='green', lw=0.75)
 # legend style and ordering
@@ -235,14 +235,14 @@ order = range(len(prob_dict.keys()))
 ax0.legend(**legend_opts)
 
 fig.savefig('TrigEff_BkgRate_ProbTrig.pdf', bbox_inches='tight')
-#plt.show()
+plt.show()
 
 
-# In[34]:
+# In[14]:
 
 
 # Convert notebook into python file
-#get_ipython().system("jupyter nbconvert --to python 'EfficiencyPlots.ipynb'")
+get_ipython().system("jupyter nbconvert --to python 'EfficiencyPlots.ipynb'")
 
 
 # In[ ]:
