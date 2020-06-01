@@ -724,7 +724,7 @@ int main(int argc, char* argv[]) {
   int m_sig_art_x = 1; // smear ART position, in strips
 
   vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
-  double chamber_eff = -1;
+  double chamber_eff = -1.;
 
   double angx = 0;
   double angy = 0;
@@ -812,9 +812,29 @@ int main(int argc, char* argv[]) {
       histograms = argv[i+1];
     }
     if (strncmp(argv[i],"-e",2)==0){
-      chamber_eff = atof(argv[i+1]);
-      for (unsigned int i = 0; i < mm_eff.size(); i++)
-        mm_eff[i] = chamber_eff;
+      if(typeid(chamber_eff) == typeid(atof(argv[i+1]))){
+	 chamber_eff = atof(argv[i+1]);
+	 for (unsigned int i = 0; i < mm_eff.size(); i++){
+	   mm_eff[i] = chamber_eff;
+	 }
+      }	  
+      else{
+	 std::vector<double> v;
+	 size_t pos = 0;
+	 std::string s = argv[i+1];
+	 std::string delimiter = ",";
+	 std::string token;
+	 while ((pos = s.find(delimiter)) != std::string::npos) {
+	   token = s.substr(0, pos);
+	   v.push_back(std::stod(token));
+	   s.erase(0, pos + delimiter.length());
+	 }
+	 v.push_back(std::stod(s));
+	 for (unsigned int i=0; i<mm_eff.size();i++){
+	   mm_eff[i] = v[i];
+	 }
+	 
+      }
     }
     if (strncmp(argv[i],"-angx",5)==0){
       angx = fabs( atof(argv[i+1]) );
