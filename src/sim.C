@@ -1,3 +1,13 @@
+/************** 
+
+MAIN SIMULATION METHOD 
+
+Original code by: Ann Wang and Alexander Tuna
+Commented / Modified by: Anthony Badea (June 2020)
+
+**************/
+
+
 // C++ includes
 #include <iostream>
 #include <fstream>
@@ -706,47 +716,54 @@ void plttrk(vector<Hit> hits, bool xflag, TString title, int ntrig, TFile * file
   c1->Write();
 }
 
+
 int main(int argc, char* argv[]) {
 
-  int nevents = -1;
+  // Setup the parameters for the study 
+  int nevents = -1; // number of events to generate
   int bkgrate = 0; // Hz per strip
 
-  int m_xroad = 8; 
-  int m_NSTRIPS = -1;
+  int m_xroad = 8; // size of x road in strips
+  int m_NSTRIPS = -1; // number of x strips
 
-  int m_bcwind = 8;
-  int m_sig_art = 32;
+  // ART = Address in Real Time (output of VMM)
+  int m_bcwind = 8; // fixed time window (in bunch crossings) during which the algorithm collects ART hits
+  int m_sig_art = 32; // art time resolution (in nanoseconds)
 
-  int killran   = 0;
-  int killxran  = 0;
-  int killuvran = 0;
+  int killran   = 0; // bool if you want to kill one plane randomly
+  int killxran  = 0; // bool if you want to kill one X plane randomly 
+  int killuvran = 0; // bool if you want to kill one U or V plane randomly 
 
-  int m_sig_art_x = 1; // smear ART position, in strips
+  int m_sig_art_x = 1; // ART position resolution (in strips). used to smear ART position
 
-  vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.};
-  double chamber_eff = -1.;
+  vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.}; // efficiency of each MM detector
+  double chamber_eff = -1.; // overall efficiency of the chamber
 
-  double angx = 0;
-  double angy = 0;
-  int angcos  = 0;
+  // Angle that the cosmic ray muon flies 
+  // refer to method cosmic_angle above for details
+  double angx = 0; // angular window in x for a muon to be created
+  double angy = 0; // angular window in y for a muon to be created
+  int angcos  = 0; // determines which distribution the muon track x,y is drawn from 
+  // angcos = 1 --> cosmic_dist defined L41: cos^2(x) distribution from [-0.3,0.3] IF angx and angy are greater than 0. ELSE both x and y track locations are zero
+  // angcos = 0 --> x and y track angles (in radians) are drawn from uniform distribution between [-angx,angx] and [-angy,angy]
 
-  string histograms = "histograms";
+  string histograms = "histograms"; // directory for output histograms
 
   // coincidence params
-  int m_xthr = 2;
-  int m_uvthr = 2;
+  int m_xthr = 2; // required total number of hits on all x channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+  int m_uvthr = 2; // required total number of hits on all u and v channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
 
-  bool bkgflag = false;
-  bool pltflag = false;
-  bool uvrflag = false;
-  bool trapflag = false;
-  bool ideal_tp   = false;
-  bool ideal_vmm  = false;
-  bool ideal_addc = false;
-  bool write_tree = false;
-  bool bkgonly = false;
-  bool smear_art = false;
-  bool funcsmear_art = false;
+  bool bkgflag = false; // decides if background should be generated
+  bool pltflag = false; // decides if event displays should be plotted
+  bool uvrflag = false; // decides if ??? used in set_chamber
+  bool trapflag = false; // decides if ??? used in create_roads
+  bool ideal_tp   = false; // decides if ??? used in Road.hh
+  bool ideal_vmm  = false; // decides if ??? used in finder function
+  bool ideal_addc = false; // decides if ??? used in finder function
+  bool write_tree = false; // decides if an output TTree is produced
+  bool bkgonly = false; // decides if only the background should be produced
+  bool smear_art = false; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
+  bool funcsmear_art = false; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
 
   TF1* func = 0;
 
@@ -941,6 +958,8 @@ int main(int argc, char* argv[]) {
   cout << endl;
   printf("\r >> smear art position (functional): %s", funcsmear_art ? "true" : "false");
   cout << endl;
+  printf("\r >> Number of Events: %d", nevents);
+  cout << endl;
   printf("\r >> x-road size (in strips): %d, +/- neighbor roads (uv): %d", XROAD, UVFACTOR);
   cout << endl;
   printf("\r >> art res (in ns): %d", m_sig_art);
@@ -989,31 +1008,34 @@ int main(int argc, char* argv[]) {
 
   TTree* tree = new TTree("gingko","gingko");
   
+  // Variables to write out to the tree
   int EventNum = 0;
-  int Ntriggers;
+  int NEvent; // number of events to be generated
+  int Ntriggers; // number of triggers on the roads
 
-  double real_x_muon;
-  double real_y_muon;
+  double real_x_muon; // x-location of a real muon
+  double real_y_muon; // y-location of a real muon
 
-  vector<int> iRoad_x;
-  vector<int> iRoad_u;
-  vector<int> iRoad_v;
+  vector<int> iRoad_x; // ??
+  vector<int> iRoad_u; // ??
+  vector<int> iRoad_v; // ??
 
-  vector<vector<int>> Hit_strips;
-  vector<vector<int>> Hit_planes;
-  vector<vector<int>> Hit_ages;
-  vector<int> trigger_BC;
-  vector<int> N_muon;
-  vector<int> N_xmuon;
+  vector<vector<int>> Hit_strips; // ??
+  vector<vector<int>> Hit_planes; // ??
+  vector<vector<int>> Hit_ages; // ??
+  vector<int> trigger_BC; // ??
+  vector<int> N_muon; // ??
+  vector<int> N_xmuon; // ??
 
-  vector<double> trig_x;
-  vector<double> trig_y;
+  vector<double> trig_x; // x-locations of all triggers
+  vector<double> trig_y; // y-locations of all triggers
     
-  vector<double> dtheta;
+  vector<double> dtheta; // ??
 
   if (write_tree) {
 
     tree->Branch("EventNum",  &EventNum);
+    tree->Branch("NEvent", &NEvent);
     tree->Branch("Ntriggers",  &Ntriggers);
 
     tree->Branch("real_x_muon",  &real_x_muon);
@@ -1111,6 +1133,7 @@ int main(int argc, char* argv[]) {
 
     if (write_tree){
       EventNum++;
+      NEvent = nevents;
       real_x_muon = -1;
       real_y_muon = -1;
       iRoad_x.clear();
