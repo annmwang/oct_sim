@@ -32,10 +32,14 @@ args = parser.parse_args()
 
 outDir = args.outDir
 print(outDir)
+if os.path.isdir(outDir) is False:
+	os.mkdir(outDir)
 # Parameters constant from run to run
 chamber = "large"
 xCoincidenceThreshold = 3
 uvCoincidenceThreshold = 3
+chamber_feature = ['']
+
 outFilePrefix = 'outFile'
 
 # Parameters that will change from run to run. Others are left default
@@ -44,7 +48,7 @@ print("Listing the parameters scanned over")
 
 print("----------------------------------------------------------")
 print("Number of Events")
-nEvents = [10**2]
+nEvents = [10**3]
 for i in range(0,len(nEvents)):
 	print("{} | {}".format(i,nEvents[i]))
 print("----------------------------------------------------------")
@@ -89,18 +93,21 @@ for i in range(0,8):
 print("Number of MM efficiency configurations: {}".format(len(mmEffs)))
 print("----------------------------------------------------------")
 
-debug = False
+debug = True
 if debug:
 	print("EMERGENCY TEST SETTINGS")
-	nEvents = [1]
+	nEvents = [10]
 	bkgRates = [0]
-	mmEffs = [[1.0]*7+[0.3]]
+	mmEffs = [[1.0]*8]
+	chamber_feature = ['-uvr', '-uvr -ideal-vmm -ideal-addc -ideal-tp', '-uvr -ideal-vmm', '-uvr -ideal-addc', '-uvr -ideal-tp']
 	print("Number of events: {}".format(nEvents))
 	print("Background rates: {}".format(bkgRates))
 	print("MM Efficiencies: {}".format(mmEffs))
+	print("Chamber features: {}".format(chamber_feature))
 	print("----------------------------------------------------------")
 
 print("Setting up job launches")
+
 # setup the output directory
 workDir = outDir + "/simResults_{}".format(now.strftime("%m%d%y_%H%M%S"))
 if os.path.isdir(workDir) == False:
@@ -114,19 +121,20 @@ os.system("make")
 nNEvents = len(nEvents)
 nBkgRates = len(bkgRates)
 nMMEffs = len(mmEffs)
-
+nChambFeats = len(chamber_feature)
 counter = 0
-# add in a loop over the mmEffs
+
 print("The number of jobs launched is: {}".format(nNEvents*nBkgRates*nMMEffs))
 for nE in range(0,nNEvents):
 	for nB in range(0,nBkgRates):
 		for nM in range(0,nMMEffs):
-			tempDir = workDir + '/job_{}_{}_{}'.format(nEvents[nE],bkgRates[nB],nM)
-			if os.path.isdir(tempDir) == False:
-				os.system("mkdir {}".format(tempDir))
-			outFileName = tempDir + '/' + outFilePrefix + '_nEvents{}_bkgRate{}_mmEffsIndx{}'.format(nEvents[nE],bkgRates[nB],nM)
-			with open("{}/script_{}.sh".format(tempDir,counter),"w") as text_file:
-				text_file.write(
+			for cF in range(0,nChambFeats):
+				tempDir = workDir + '/job_{}_{}_{}_{}'.format(nEvents[nE],bkgRates[nB],nM,cF)
+				if os.path.isdir(tempDir) == False:
+					os.system("mkdir {}".format(tempDir))
+				outFileName = tempDir + '/' + outFilePrefix + '_nEvents{}_bkgRate{}_mmEffsIndx{}'.format(nEvents[nE],bkgRates[nB],nM)
+			       	with open("{}/script_{}.sh".format(tempDir,counter),"w") as text_file:
+					text_file.write(
                                 """ #!/bin/bash
 #$ -o /scratch/stdout_{0}_{2}_{7}.txt 
 #$ -e /scratch/stderr_{0}_{2}_{7}.txt
@@ -140,7 +148,7 @@ echo "Working hard..."
 
 printf "###########"
 mkdir -p /scratch/testBadea/job_{0}_{2}_{7}
-./sim -n {0} -ch {1} -b {2} -o /scratch/testBadea/job_{0}_{2}_{7}/outFile_nEvents{0}_bkgRate{2}_mmEffIndx{7}.root -uvr -e {3} -thrx {4} -thruv {5} -tree
+./sim -n {0} -ch {1} -b {2} -o /scratch/testBadea/job_{0}_{2}_{7}/outFile_nEvents{0}_bkgRate{2}_mmEffIndx{7}.root -uvr -e {3} -thrx {4} -thruv {5} -tree {8}
 scp /scratch/testBadea/job_{0}_{2}_{7}/* abc-at12:{6}
 scp /scratch/std*_{0}_{2}_{7}.txt abc-at12:{6}
 rm -rf /scratch/testBadea/job_{0}_{2}_{7}
@@ -152,10 +160,12 @@ rm -rf /scratch/std*_{0}_{2}_{7}.txt
                                         xCoincidenceThreshold,                                                                                            
                                         uvCoincidenceThreshold,
 					tempDir,
-					   nM))
-			os.system("chmod +x {}/script_{}.sh".format(tempDir,counter))
-		       	os.system("qsub -V -cwd -q tier3 {}/script_{}.sh".format(tempDir,counter))
-	       		counter += 1
+					nM,
+					chamber_feature[cF]   ))
+				os.system("chmod +x {}/script_{}.sh".format(tempDir,counter))
+				print("qsub -V -cwd -q tier3 {}/script_{}.sh".format(tempDir,counter))
+			       	os.system("qsub -V -cwd -q tier3 {}/script_{}.sh".format(tempDir,counter))
+		       		counter += 1
 print("----------------------------------------------------------")
 print("All jobs launched!")
 sys.stdout.close()

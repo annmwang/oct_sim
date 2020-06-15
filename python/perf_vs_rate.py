@@ -7,6 +7,7 @@ Assumes the histograms are hella finely binned.
 import array
 import copy
 import sys
+import os
 import ROOT
 ROOT.gROOT.SetBatch()
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -26,7 +27,9 @@ def main():
     else:
         distance_R = 1.0
 
-    input = ROOT.TFile.Open("all_res_hadd.root")
+    # directory of the file                                                                                       
+    file_dir = "/gpfs3/harvard/abadea/data/NSW/oct_sim/ATL-COM-MUON-2018-017"
+    input = ROOT.TFile.Open(os.path.join(file_dir,"all_res_hadd.root"))
     histnames_nUVR = ["histograms_%s_e1.00_b00000_nUVR/h_yres" % (chamber),
                       "histograms_%s_e1.00_b02000_nUVR/h_yres" % (chamber),
                       "histograms_%s_e1.00_b05000_nUVR/h_yres" % (chamber),

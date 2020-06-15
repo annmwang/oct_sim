@@ -1,3 +1,4 @@
+import os
 import copy
 import ROOT
 ROOT.gROOT.SetBatch()
@@ -6,13 +7,16 @@ def main():
 
     rootlogon()
 
+    # directory of the files
+    file_dir = "/gpfs3/harvard/abadea/data/NSW/oct_sim/ATL-COM-MUON-2018-017"
+
     # put batch files here
     # f8 :: no boards killed
     # f7 :: -killran
     # f6 :: -killxran -killuvran
-    f8 = ROOT.TFile.Open("batch-2018-03-27-10h16m14s.root")
-    f7 = ROOT.TFile.Open("batch-2018-03-27-10h17m25s.root")
-    f6 = ROOT.TFile.Open("batch-2018-03-27-10h18m35s.root")
+    f8 = ROOT.TFile.Open(os.path.join(file_dir,"batch-2018-03-27-10h16m14s.root"))
+    f7 = ROOT.TFile.Open(os.path.join(file_dir,"batch-2018-03-27-10h17m25s.root"))
+    f6 = ROOT.TFile.Open(os.path.join(file_dir,"batch-2018-03-27-10h18m35s.root"))
 
     # retrieve the histograms
     hnumer = "histograms/h_theta_trig"

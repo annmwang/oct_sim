@@ -63,8 +63,9 @@ def axes(ratio_plot=True, figsize=(4,4), gridspec_update=None,
         else:
             axes[0].set_yticklabels(yticks)
     if ytick_ratio_step is not None and ratio_plot:
+        rangeVal = int(round((ylim_ratio[1]-ylim_ratio[0])/ytick_ratio_step))
         yticks = [round(ylim_ratio[0] + i*ytick_ratio_step, 4)
-                  for i in range(1+round((ylim_ratio[1]-ylim_ratio[0])/ytick_ratio_step))][1:-1]
+                  for i in range(1+rangeVal)][1:-1]
         axes[1].set_yticks(yticks)
         axes[1].set_yticklabels(list(map(str, yticks)))
     

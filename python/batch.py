@@ -18,6 +18,7 @@ def main():
     now = time.strftime("%Y-%m-%d-%Hh%Mm%Ss")
 
     ops = options()
+    print(ops)
     if not ops.j:
         fatal("Please provide a number of jobs to launch with -j")
     if not ops.a:
