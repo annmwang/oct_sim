@@ -15,8 +15,6 @@ TF1 *cosmic_dist = new TF1("cosmic_dist", "cos(x)*cos(x)", -0.3, 0.3);
 
 bool db = false; // debug output flag
 
-// SOME CONSTANTS
-
 int NPLANES = 8;
 int NPCB_PER_PLANE = 8;
 int NSTRIPS;
@@ -61,14 +59,7 @@ int killuvran = 0; // bool if you want to kill one U or V plane randomly
 
 int m_sig_art_x = 1; // ART position resolution (in strips). used to smear ART position
 
-vector<double> mm_eff = {1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.}; // efficiency of each PCB Left/Right of the MM
+vector<double> mm_eff(NPLANES*NPCB_PER_PLANE,1.0); // efficiency of each PCB Left/Right of the MM
 
 double chamber_eff = -1.; // overall efficiency of the chamber
 
@@ -105,6 +96,26 @@ char chamberType[400];
 
 bool b_out = false;
 bool ch_type = false;
+
+// Input: User inputed efficiencies
+// Function: Move user efficiencies into mm_eff vector defined above 
+void fill_mm_eff(char *argv){
+	std::vector<double> v;
+	size_t pos = 0;
+	std::string s = argv;
+	std::string delimiter = ",";
+	std::string token;
+	while ((pos = s.find(delimiter)) != std::string::npos) {
+		token = s.substr(0, pos);
+		v.push_back(std::stod(token));
+		s.erase(0, pos + delimiter.length());
+	}
+	v.push_back(std::stod(s));
+	for (unsigned int i=0; i<mm_eff.size();i++){
+		mm_eff[i] = v[i];
+	}
+}
+
 
 // Input: 
 // Output:
@@ -167,23 +178,7 @@ int read_parameters_from_user(int argc, char* argv[]){
 	      histograms = argv[i+1];
 	    }
 	    if (strncmp(argv[i],"-e",2)==0){
-	      std::cout<<argv[i+1]<<std::endl;
-	      printf("%s",argv[i+1]);
-	      std::cout<<"FILLING mm_EFF"<<std::endl;
-	      std::vector<double> v;
-	      size_t pos = 0;
-	      std::string s = argv[i+1];
-	      std::string delimiter = ",";
-	      std::string token;
-	      while ((pos = s.find(delimiter)) != std::string::npos) {
-		token = s.substr(0, pos);
-		v.push_back(std::stod(token));
-		s.erase(0, pos + delimiter.length());
-	      }
-	      v.push_back(std::stod(s));
-	      for (unsigned int i=0; i<mm_eff.size();i++){
-		mm_eff[i] = v[i];
-	      }
+	      fill_mm_eff(argv[i+1]);
 	    }
 	    if (strncmp(argv[i],"-angx",5)==0){
 	      angx = fabs( atof(argv[i+1]) );
@@ -341,8 +336,14 @@ void print_parameters(){
 	std::cout << std::endl;
 	printf("\r >> Killing one UV plane randomly: %s", (killuvran) ? "true" : "false");
 	std::cout << std::endl;
+	printf("\r >> MM Efficiencies");
+	std::cout << std::endl;
 	for (unsigned int i = 0; i < mm_eff.size(); i++){
-		printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
+		if ( i % NPCB_PER_PLANE == 0 ){ 
+			printf("\r >> MM efficiency, Plane %i", i / NPCB_PER_PLANE);
+			std::cout << std::endl;
+		}
+		printf("\r >> MM efficiency, PCB %i: %f", i%NPCB_PER_PLANE, mm_eff[i]);
 		std::cout << std::endl;
 	}
 	printf("\r >> Seed for TRandom3: %d", ran->GetSeed());

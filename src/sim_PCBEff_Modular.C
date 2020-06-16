@@ -74,8 +74,6 @@ int main(int argc, char* argv[]) {
   
   std::cout << pink << "Generating " << nevents << " events" << ending << std::endl;
 
-
-
   // ######################### ############################ ######################## //
   // ######################### CREATE OUTPUT FILE AND TTREE ######################## //
 
