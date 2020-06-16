@@ -1,3 +1,13 @@
+/************** 
+
+SIMULATION UTILITIES
+
+Original code by: Ann Wang and Alexander Tuna
+Commented / Modified by: Anthony Badea (June 2020)
+
+**************/
+
+
 #ifndef SimUtilities_HH
 #define SimUtilities_HH
 

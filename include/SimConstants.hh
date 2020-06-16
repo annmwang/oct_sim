@@ -1,3 +1,12 @@
+/************** 
+
+SIMULATION CONSTANTS
+
+Original code by: Ann Wang and Alexander Tuna
+Commented / Modified by: Anthony Badea (June 2020)
+
+**************/
+
 #ifndef SimConstants_HH
 #define SimConstants_HH
 

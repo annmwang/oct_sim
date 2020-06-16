@@ -1,3 +1,12 @@
+/************** 
+
+SIMULATION GENERAL UTILITIES
+
+Original code by: Ann Wang and Alexander Tuna
+Commented / Modified by: Anthony Badea (June 2020)
+
+**************/
+
 #ifndef GeneralUtilities_HH
 #define GeneralUtilities_HH
 
