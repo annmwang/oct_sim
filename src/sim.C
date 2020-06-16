@@ -316,6 +316,8 @@ double predicted_rate(int strip, string chamber) {
   return rate*1000;
 }
 
+// Generates a muon with positions in each of the layers
+// Not updated for PCB level study. To do this need to update the detector schematics
 tuple<double,double,double,double> generate_muon(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, string chamber, int angcos, double angx, double angy, bool trapflag){
 
   double x = 9e9;
@@ -831,36 +833,6 @@ int main(int argc, char* argv[]) {
     if (strncmp(argv[i],"-e",2)==0){
       std::cout<<argv[i+1]<<std::endl;
       printf("%s",argv[i+1]);
-      /*
-      if(typeid(chamber_eff) == typeid(atof(argv[i+1]))){
-	std::cout<<"Using chamber value"<<std::endl;
-	printf("USING CHAMBER VALUE");
-	 chamber_eff = atof(argv[i+1]);
-	 for (unsigned int i = 0; i < mm_eff.size(); i++){
-	   mm_eff[i] = chamber_eff;
-	 }
-      }	  
-      else{
-	printf("FILLING WITH INPUT");
-	std::cout<<"FILLING mm_EFF"<<std::endl;
-	 std::vector<double> v;
-	 size_t pos = 0;
-	 std::string s = argv[i+1];
-	 std::string delimiter = ",";
-	 std::string token;
-	 while ((pos = s.find(delimiter)) != std::string::npos) {
-	   token = s.substr(0, pos);
-	   v.push_back(std::stod(token));
-	   s.erase(0, pos + delimiter.length());
-	 }
-	 v.push_back(std::stod(s));
-	 for (unsigned int i=0; i<mm_eff.size();i++){
-	   mm_eff[i] = v[i];
-	 }
-	 
-      }
-      */
-      printf("FILLING WITH INPUT");
       std::cout<<"FILLING mm_EFF"<<std::endl;
       std::vector<double> v;
       size_t pos = 0;
@@ -868,13 +840,13 @@ int main(int argc, char* argv[]) {
       std::string delimiter = ",";
       std::string token;
       while ((pos = s.find(delimiter)) != std::string::npos) {
-	token = s.substr(0, pos);
-	v.push_back(std::stod(token));
-	s.erase(0, pos + delimiter.length());
+		token = s.substr(0, pos);
+		v.push_back(std::stod(token));
+		s.erase(0, pos + delimiter.length());
       }
       v.push_back(std::stod(s));
       for (unsigned int i=0; i<mm_eff.size();i++){
-	mm_eff[i] = v[i];
+		mm_eff[i] = v[i];
       }
     }
     if (strncmp(argv[i],"-angx",5)==0){
