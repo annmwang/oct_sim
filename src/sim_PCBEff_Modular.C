@@ -52,6 +52,7 @@ Commented / Modified by: Anthony Badea (June 2020)
 #include <GeneralUtilities.hh>
 #include <Finder.hh>
 #include <SimConstants.hh>
+#include <SimNtupleData.hh>
 
 int main(int argc, char* argv[]) {
 
@@ -71,9 +72,8 @@ int main(int argc, char* argv[]) {
   // Print out the simulation parameters
   print_parameters();
 
-  
   std::cout << pink << "Generating " << nevents << " events" << ending << std::endl;
-
+  
   // ######################### ############################ ######################## //
   // ######################### CREATE OUTPUT FILE AND TTREE ######################## //
 
@@ -83,60 +83,10 @@ int main(int argc, char* argv[]) {
   // define output ntuple
 
   TTree* tree = new TTree("gingko","gingko");
-  
-  // Variables to write out to the tree
-  int EventNum = 0;
-  int NEvent; // number of events to be generated
-  int Ntriggers; // number of triggers on the roads
-
-  double real_x_muon; // x-location of a real muon
-  double real_y_muon; // y-location of a real muon
-
-  vector<int> iRoad_x; // ??
-  vector<int> iRoad_u; // ??
-  vector<int> iRoad_v; // ??
-
-  vector<vector<int>> Hit_strips; // ??
-  vector<vector<int>> Hit_planes; // ??
-  vector<vector<int>> Hit_ages; // ??
-  vector<int> trigger_BC; // ??
-  vector<int> N_muon; // ??
-  vector<int> N_xmuon; // ??
-
-  vector<double> trig_x; // x-locations of all triggers
-  vector<double> trig_y; // y-locations of all triggers
-    
-  vector<double> dtheta; // ??
-
-  // Branches for the simulation parameters
-  // Added by Anthony Badea (June 2020)
-  TTree *tree_args = setup_args_tree();
-
-  vector<float> chamber_effs; // efficiencies of the pcb's used 
-
-  if (write_tree) {
-
-    tree->Branch("EventNum",  &EventNum);
-    tree->Branch("NEvent", &NEvent);
-    tree->Branch("Ntriggers",  &Ntriggers);
-
-    tree->Branch("real_x_muon",  &real_x_muon);
-    tree->Branch("real_y_muon",  &real_y_muon);
-
-    tree->Branch("iRoad_x", &iRoad_x);
-    tree->Branch("iRoad_u", &iRoad_u);
-    tree->Branch("iRoad_v", &iRoad_v);
-    tree->Branch("Hit_strips", &Hit_strips);
-    tree->Branch("Hit_planes", &Hit_planes);
-    tree->Branch("Hit_ages", &Hit_ages);
-    tree->Branch("trigger_BC", &trigger_BC);
-    tree->Branch("N_muon", &N_muon);
-    tree->Branch("N_xmuon", &N_xmuon);
-    tree->Branch("trig_x", &trig_x);
-    tree->Branch("trig_y", &trig_y);
-    tree->Branch("dtheta", &dtheta);
-    
-  }
+  TTree* tree_args = new TTree("sim_args", "sim_args");
+  SimNtupleData SN;
+  SN.SetBranchData(tree);
+  SN.SetBranchArgs(tree_args);
 
   // ######################### ######################### ######################### //
   // ######################### ######################### ######################### //
@@ -174,7 +124,7 @@ int main(int argc, char* argv[]) {
   int nevent_uvbkg4 = 0;
 
   int extratrig = 0;
-  int nevent_allnoise = 0;
+  int nevent_allnoise = 0; 
 
   // ######################### ######################### ######################### //
   // ######################### ######################### ######################### //
@@ -241,27 +191,51 @@ int main(int argc, char* argv[]) {
   for ( int i = 0; i < nevents; i++) {
 
     if (write_tree){
-      EventNum++;
-      NEvent = nevents;
-      real_x_muon = -1;
-      real_y_muon = -1;
-      iRoad_x.clear();
-      iRoad_u.clear();
-      iRoad_v.clear();
+      SN.EventNum++;
+      SN.NEvent = nevents;
+      SN.real_x_muon = -1;
+      SN.real_y_muon = -1;
+      SN.iRoad_x->clear();
+      SN.iRoad_u->clear();
+      SN.iRoad_v->clear();
 
-      Hit_strips.clear();
-      Hit_planes.clear();
-      Hit_ages.clear();
-      trigger_BC.clear();
-      N_muon.clear();
-      N_xmuon.clear();
-      trig_x.clear();
-      trig_y.clear();
-      dtheta.clear();
+      SN.Hit_strips->clear();
+      SN.Hit_planes->clear();
+      SN.Hit_ages->clear();
+      SN.trigger_BC->clear();
+      SN.N_muon->clear();
+      SN.N_xmuon->clear();
+      SN.trig_x->clear();
+      SN.trig_y->clear();
+      SN.dtheta->clear();
 
 
       // Added by Anthony Badea (June 2020)
       if( i == 0){
+      	SN.bkgrate = bkgrate; // Hz per strip
+    	SN.m_xroad = m_xroad; // size of x road in strips
+    	SN.m_NSTRIPS = m_NSTRIPS; // number of x strips
+	    SN.m_bcwind = m_bcwind; // fixed time window (in bunch crossings) during which the algorithm collects ART hits
+	    SN.m_sig_art = m_sig_art; // art time resolution (in nanoseconds)
+	    SN.killran = killran; // bool if you want to kill one plane randomly
+	    SN.killxran = killxran; // bool if you want to kill one X plane randomly 
+	    SN.killuvran = killuvran; // bool if you want to kill one U or V plane randomly 
+	    SN.m_sig_art_x = m_sig_art_x; // ART position resolution (in strips). used to smear ART position
+	    SN.mm_eff = &mm_eff; // efficiency of each PCB Left/Right of the MM
+	    SN.m_xthr = m_xthr; // required total number of hits on all x channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+	    SN.m_uvthr = m_uvthr; // required total number of hits on all u and v channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+	    SN.bkgflag = bkgflag; // decides if background should be generated
+	    SN.pltflag = pltflag; // decides if event displays should be plotted
+	    SN.uvrflag = uvrflag; // decides if ??? used in set_chamber
+	    SN.trapflag = trapflag; // decides if ??? used in create_roads
+	    SN.ideal_tp = ideal_tp; // decides if ??? used in Road.hh
+	    SN.ideal_vmm = ideal_vmm; // decides if ??? used in finder function
+	    SN.ideal_addc = ideal_addc; // decides if ??? used in finder function
+	    SN.write_tree = write_tree; // decides if an output TTree is produced
+	    SN.bkgonly = bkgonly; // decides if only the background should be produced
+	    SN.smear_art = smear_art; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
+	    SN.funcsmear_art = funcsmear_art; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
+	    //SN.chamber = chamber; // Chamber value
       	tree_args->Fill();
       }
     }
@@ -285,8 +259,8 @@ int main(int argc, char* argv[]) {
     double xmuon,ymuon,thx,thy;
     std::tie(xmuon,ymuon,thx,thy) = generate_muon(xpos, ypos, zpos, string(chamberType), angcos, angx, angy, trapflag);
 
-    real_x_muon = xmuon;
-    real_y_muon = ymuon;
+    SN.real_x_muon = xmuon;
+    SN.real_y_muon = ymuon;
 
     if (db){
       printf("generated muon! @ (%4.4f,%4.4f)\n",xmuon,ymuon);
@@ -389,7 +363,7 @@ int main(int argc, char* argv[]) {
     std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i);
     hists["h_ntrig"]->Fill(ntrigroads);
     if (write_tree)
-      Ntriggers = ntrigroads;
+      SN.Ntriggers = ntrigroads;
     for (auto sl: m_slopes)
       if (sl.imuonhits == 0)
         hists_2d["h_xy_bkg"]->Fill(sl.xavg, sl.yavg);
@@ -442,9 +416,9 @@ int main(int argc, char* argv[]) {
       ntrig_age++;
       
       if (write_tree) {
-        iRoad_x.push_back(m_slopes[k].iroad);
-        iRoad_u.push_back(m_slopes[k].iroadu);
-        iRoad_v.push_back(m_slopes[k].iroadv);
+        SN.iRoad_x->push_back(m_slopes[k].iroad);
+        SN.iRoad_u->push_back(m_slopes[k].iroadu);
+        SN.iRoad_v->push_back(m_slopes[k].iroadv);
         
         slopehits_ch.clear();
         slopehits_ages.clear();
@@ -456,15 +430,15 @@ int main(int argc, char* argv[]) {
           slopehits_ages.push_back(m_slopes[k].slopehits[n].Age());
         }
         
-        trigger_BC.push_back(m_slopes[k].age);
-        N_muon.push_back(m_slopes[k].imuonhits);
-        N_xmuon.push_back(m_slopes[k].xmuon);
-        Hit_strips.push_back(slopehits_ch);
-        Hit_planes.push_back(slopehits_planes);
-        Hit_ages.push_back(slopehits_ages);
-        trig_x.push_back(m_slopes[k].xavg);
-        trig_y.push_back(m_slopes[k].yavg);
-        dtheta.push_back( TMath::ATan(m_slopes[k].mxl) );
+        SN.trigger_BC->push_back(m_slopes[k].age);
+        SN.N_muon->push_back(m_slopes[k].imuonhits);
+        SN.N_xmuon->push_back(m_slopes[k].xmuon);
+        SN.Hit_strips->push_back(slopehits_ch);
+        SN.Hit_planes->push_back(slopehits_planes);
+        SN.Hit_ages->push_back(slopehits_ages);
+        SN.trig_x->push_back(m_slopes[k].xavg);
+        SN.trig_y->push_back(m_slopes[k].yavg);
+        SN.dtheta->push_back( TMath::ATan(m_slopes[k].mxl) );
       }
 
       if (m_slopes[k].imuonhits == 0)
