@@ -565,6 +565,7 @@ int main(int argc, char* argv[]) {
   ofstream mylog;
   string logtitle = string(outputFileName) + ".log.txt";
   mylog.open(logtitle);
+  mylog << "LOG FILE FROM SIM_PCBEFF_MODULAR.C" << "\n";
   mylog << "x-road size(in strips): "<< XROAD <<", +/- neighbor roads (uv): "<< UVFACTOR <<"\n";
   mylog << "art res (in ns): " << m_sig_art << "\n";
   mylog << "Using BCID window: " << bc_wind << "\n";
