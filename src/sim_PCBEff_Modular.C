@@ -108,6 +108,12 @@ int main(int argc, char* argv[]) {
     
   vector<double> dtheta; // ??
 
+  // Branches for the simulation parameters
+  // Added by Anthony Badea (June 2020)
+  TTree *tree_args = setup_args_tree();
+
+  vector<float> chamber_effs; // efficiencies of the pcb's used 
+
   if (write_tree) {
 
     tree->Branch("EventNum",  &EventNum);
@@ -129,7 +135,7 @@ int main(int argc, char* argv[]) {
     tree->Branch("trig_x", &trig_x);
     tree->Branch("trig_y", &trig_y);
     tree->Branch("dtheta", &dtheta);
-
+    
   }
 
   // ######################### ######################### ######################### //
@@ -252,6 +258,12 @@ int main(int argc, char* argv[]) {
       trig_x.clear();
       trig_y.clear();
       dtheta.clear();
+
+
+      // Added by Anthony Badea (June 2020)
+      if( i == 0){
+      	tree_args->Fill();
+      }
     }
 
     if (nevents > 10){
@@ -283,10 +295,10 @@ int main(int argc, char* argv[]) {
     hists["h_theta"]->Fill(thx * 180/TMath::Pi());
     hists["h_phi"]  ->Fill(thy * 180/TMath::Pi());
 
-    //################################################################//
-    //################## Add up the number of hits ###################//
-	   // Modified by Anthony Badea on June 16, 2020
-    // Input: detector response to a muon via oct_response(...)
+	//################################################################//
+	//################## Add up the number of hits ###################//
+	// Modified by Anthony Badea on June 16, 2020
+	// Input: detector response to a muon via oct_response(...)
     
     vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
 
@@ -597,6 +609,7 @@ int main(int argc, char* argv[]) {
   hists_2d["h_xy_eff"]->Divide(hists_2d["h_xy_trig"], hists_2d["h_xy_all"], 1.0, 1.0, "B");
 
   fout->cd();
+  tree_args->Write();
   if (write_tree)
     tree->Write();
   fout->mkdir(histograms.c_str());

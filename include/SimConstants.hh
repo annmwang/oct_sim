@@ -286,6 +286,37 @@ int check_good_chamber(){
 	return 1;
 }
 
+// Input: none
+// Output: TTree containing all of the simulation parameters
+TTree* setup_args_tree(){
+	TTree *tree_args = new TTree("sim_args", "sim_args");
+
+    tree_args->Branch("bkgrate", &bkgrate);
+    tree_args->Branch("m_xroad", &m_xroad);
+    tree_args->Branch("m_NSTRIPS", &m_NSTRIPS);
+    tree_args->Branch("m_bcwind", &m_bcwind);
+    tree_args->Branch("killran", &killran);
+    tree_args->Branch("killxran", &killxran);
+    tree_args->Branch("killuvran", &killuvran);
+    tree_args->Branch("m_sig_art_x", &m_sig_art_x);
+    tree_args->Branch("mm_eff", &mm_eff);
+    tree_args->Branch("m_xthr", &m_xthr);
+    tree_args->Branch("m_uvthr", &m_uvthr);
+    tree_args->Branch("bkgflag", &bkgflag);
+    tree_args->Branch("pltflag", &pltflag);
+    tree_args->Branch("uvrflag", &uvrflag);
+    tree_args->Branch("trapflag", &trapflag);
+    tree_args->Branch("ideal_tp", &ideal_tp);
+    tree_args->Branch("ideal_vmm", &ideal_vmm);
+    tree_args->Branch("ideal_addc", &ideal_addc);
+    tree_args->Branch("write_tree", &write_tree);
+    tree_args->Branch("bkgonly", &bkgonly);
+    tree_args->Branch("smear_art", &smear_art);
+    tree_args->Branch("funcsmear_art", &funcsmear_art);
+    tree_args->Branch("chamber", &chamberType);
+
+    return tree_args;
+}
 
 // Input:
 // Output:
