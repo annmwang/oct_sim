@@ -7,7 +7,7 @@ The main method launches a job with those settings.
 """
 
 
-import os, sys, argparse
+import os, sys, argparse, time
 
 # Input: stdout from simulation code src/sim
 # Output: dictionary containing parameters to run over
@@ -151,6 +151,9 @@ def clean_dict(inputs):
 	param_dict['efficiencies'] = sorted(param_dict['efficiencies'])
 	param_dict['efficiencies'] = ['-e',[val[1] for val in param_dict['efficiencies']]]
 	
+	#### DIRTY TEST ####
+	param_dict['nEvents'] = ['-n', 10]
+
 	return param_dict
 
 
@@ -198,19 +201,32 @@ def main():
 	ops = options()
 	
 	if(ops.run):
-		try:
-			os.system( " python python/batch_local.py -j {} -a \"{}\" ".format(ops.j,get_sim_args(ops.i)))
-		except:
+		print('hi')
+		if ops.i:
+			if '.txt' in ops.i:
+				file = open(ops.i,'r')
+				lines = file.readlines()
+				for line in lines:
+					os.system( " python python/batch_local.py -j {} -a \"{}\" ".format(ops.j,get_sim_args(line.split('\n')[0])))
+					time.sleep(1)
+			else:
+				os.system( " python python/batch_local.py -j {} -a \"{}\" ".format(ops.j,get_sim_args(ops.i)))
+		else:
 			print("BAD INPUT FILE: {}".format(ops.i))
 	else:
-		try:
-			print(get_sim_args(ops.i))
-		except:
+		if ops.i:
+			if '.txt' in ops.i:
+				file = open(ops.i,'r')
+				lines = file.readlines()
+				for line in lines:
+					print(get_sim_args(line.split('\n')[0]))
+			else:
+				print(get_sim_args(ops.i))
+		else:
 			print("BAD INPUT FILE: {}".format(ops.i))
 		
 
 if __name__ == "__main__":
-	#main(input_std_out='/Users/anthonybadea/Desktop/ATL-COM-MUON-2018-017/batch-2018-03-27-10h16m14s_stdout_40400176.txt')
 	main()
 
 

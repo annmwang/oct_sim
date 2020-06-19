@@ -76,16 +76,17 @@ def main():
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             time.sleep(1)
             stdout, stderr = proc.communicate()
+
             double_check(stdout, stderr, cmd)
 
             # write the log file
             logfile = open(os.path.join(config['jobdir'],'stdout.txt'),"w")
-            logfile.write("# stdout: %s\n" % stdout.replace("\n", " "))
+            logfile.write(stdout)
             logfile.close()
 
             # write the error file
             errfile = open(os.path.join(config['jobdir'],'stderr.txt'),"w")
-            errfile.write("# stderr: %s\n" % stderr.replace("\n"," "))
+            errfile.write(stderr)
             errfile.close()
 
             print "Submitted %4i / %4i @ %s" % (job+1, config["jobs"], time.strftime("%Y-%m-%d-%Hh%Mm%Ss"))
