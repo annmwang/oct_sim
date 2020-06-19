@@ -1,4 +1,13 @@
-import os, sys
+"""
+Written by: Anthony Badea (June 2020)
+
+Takes in an stdout file from the simulation scripts and parses the arguments into a dictionary. 
+The main method launches a job with those settings.
+
+"""
+
+
+import os, sys, argparse
 
 # Input: stdout from simulation code src/sim
 # Output: dictionary containing parameters to run over
@@ -32,7 +41,7 @@ def parse_stdout(stdout = ''):
 			uv_road_size = ['uv-road size', vals[2].split('\n')[0]]
 			vals = [x_road_size,uv_road_size]
 		else:
-			print('Line longer than 3 long')
+			#print('Line longer than 3 long')
 			continue
 
 		# Add vals to dictionary
@@ -138,7 +147,7 @@ def clean_dict(inputs):
 	# Clean up efficiency list
 	if len(param_dict['efficiencies']) == 8:
 		param_dict['legacy'] = ['-legacy']	
-		
+
 	param_dict['efficiencies'] = sorted(param_dict['efficiencies'])
 	param_dict['efficiencies'] = ['-e',[val[1] for val in param_dict['efficiencies']]]
 	
@@ -159,7 +168,6 @@ def formatMMEffString(mm_eff):
 def get_sim_args(stdout = ''):
 	inputs = parse_stdout(stdout)
 	param_dict = clean_dict(inputs)
-	print(inputs)
 	s = ''
 	for key, val in param_dict.items():
 		#print(key,val)
@@ -170,23 +178,40 @@ def get_sim_args(stdout = ''):
 			for i in val:
 				s+= '{} '.format(i)
 		except:
-			print('Parameter {} empty'.format(key))
+			#print('Parameter {} empty'.format(key))
 			continue
 	return s
 
 
-#print(get_sim_args('/Users/anthonybadea/Desktop/ATL-COM-MUON-2018-017/batch-2018-03-27-10h16m14s_stdout_40400176.txt'))
+# Argument parser
+def options():
+    parser = argparse.ArgumentParser(usage=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-j",     default=1,        help="Number of jobs to launch")
+    parser.add_argument("-i",     default=None,        help="input file")
+    parser.add_argument("--run",  action="store_true", help="Enable if you want to run the job")
+    return parser.parse_args()
+
 
 # Input: job arguments
 # Output: None, calls the job operation 
-def main(nJobs = 1,
-		 input_std_out = '',
-	     outDir = "/Users/anthonybadea/Documents/ATLAS/oct_sim/work"):
-	os.system( " python python/batch_local.py -j {} -a \"{}\" ".format(nJobs,get_sim_args(input_std_out)))
+def main():
+	ops = options()
+	
+	if(ops.run):
+		try:
+			os.system( " python python/batch_local.py -j {} -a \"{}\" ".format(ops.j,get_sim_args(ops.i)))
+		except:
+			print("BAD INPUT FILE: {}".format(ops.i))
+	else:
+		try:
+			print(get_sim_args(ops.i))
+		except:
+			print("BAD INPUT FILE: {}".format(ops.i))
+		
 
 if __name__ == "__main__":
-	main(input_std_out='/Users/anthonybadea/Desktop/ATL-COM-MUON-2018-017/batch-2018-03-27-10h16m14s_stdout_40400176.txt')
-
+	#main(input_std_out='/Users/anthonybadea/Desktop/ATL-COM-MUON-2018-017/batch-2018-03-27-10h16m14s_stdout_40400176.txt')
+	main()
 
 
 
