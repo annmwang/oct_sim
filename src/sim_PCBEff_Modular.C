@@ -236,6 +236,8 @@ int main(int argc, char* argv[]) {
 	    SN.smear_art = smear_art; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
 	    SN.funcsmear_art = funcsmear_art; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
 	    //SN.chamber = chamber; // Chamber value
+	    SN.legacy = legacy; // Enable legacy mode
+	    SN.seed = seed; // Random number generator seed
       	tree_args->Fill();
       }
     }
@@ -273,8 +275,10 @@ int main(int argc, char* argv[]) {
 	//################## Add up the number of hits ###################//
 	// Modified by Anthony Badea on June 16, 2020
 	// Input: detector response to a muon via oct_response(...)
-    
-    vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff);
+    // Legacy mode: 
+
+    // Function location: ChamberUtilities.hh
+    vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff, legacy);
 
     kill_random(killran, 
                 killxran, 
@@ -291,6 +295,7 @@ int main(int argc, char* argv[]) {
     int n_x1 = 0;
     int n_x2 = 0;
 
+    // Function location: SimUtilities.hh
     std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits(NPLANES, 
                                                            NPCB_PER_PLANE, 
                                                            GEOMETRY, 
@@ -305,7 +310,8 @@ int main(int argc, char* argv[]) {
                                                            funcsmear_art,
                                                            func,
                                                            bkgonly,
-                                                           oct_hitmask);
+                                                           oct_hitmask,
+                                                           legacy);
 
     //################################################################//
     //################################################################//

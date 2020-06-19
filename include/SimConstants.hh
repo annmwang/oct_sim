@@ -97,6 +97,9 @@ char chamberType[400];
 bool b_out = false;
 bool ch_type = false;
 
+bool legacy = false;
+int seed = 0;
+
 // Input: User inputed efficiencies
 // Function: Move user efficiencies into mm_eff vector defined above 
 void fill_mm_eff(char *argv){
@@ -209,6 +212,7 @@ int read_parameters_from_user(int argc, char* argv[]){
 	    }
 	    if (strncmp(argv[i],"-seed", 5)==0){
 	      ran->SetSeed( atoi(argv[i+1]) );
+	      seed = atoi(argv[i+1]);
 	    }
 	    if (strncmp(argv[i],"-tree", 5)==0){
 	      write_tree = true;
@@ -237,6 +241,9 @@ int read_parameters_from_user(int argc, char* argv[]){
 	      func->SetParameter(6,   10.68744);
 	      func->SetParameter(7,    0.00000);
 	      func->SetParameter(8,    3.70079);
+	    }
+	    if (strncmp(argv[i],"-legacy",7)==0){
+	      legacy = true;
 	    }
   	}
 
@@ -286,38 +293,6 @@ int check_good_chamber(){
 	return 1;
 }
 
-// Input: none
-// Output: TTree containing all of the simulation parameters
-TTree* setup_args_tree(){
-	TTree *tree_args = new TTree("sim_args", "sim_args");
-
-    tree_args->Branch("bkgrate", &bkgrate);
-    tree_args->Branch("m_xroad", &m_xroad);
-    tree_args->Branch("m_NSTRIPS", &m_NSTRIPS);
-    tree_args->Branch("m_bcwind", &m_bcwind);
-    tree_args->Branch("killran", &killran);
-    tree_args->Branch("killxran", &killxran);
-    tree_args->Branch("killuvran", &killuvran);
-    tree_args->Branch("m_sig_art_x", &m_sig_art_x);
-    tree_args->Branch("mm_eff", &mm_eff);
-    tree_args->Branch("m_xthr", &m_xthr);
-    tree_args->Branch("m_uvthr", &m_uvthr);
-    tree_args->Branch("bkgflag", &bkgflag);
-    tree_args->Branch("pltflag", &pltflag);
-    tree_args->Branch("uvrflag", &uvrflag);
-    tree_args->Branch("trapflag", &trapflag);
-    tree_args->Branch("ideal_tp", &ideal_tp);
-    tree_args->Branch("ideal_vmm", &ideal_vmm);
-    tree_args->Branch("ideal_addc", &ideal_addc);
-    tree_args->Branch("write_tree", &write_tree);
-    tree_args->Branch("bkgonly", &bkgonly);
-    tree_args->Branch("smear_art", &smear_art);
-    tree_args->Branch("funcsmear_art", &funcsmear_art);
-    tree_args->Branch("chamber", &chamberType);
-
-    return tree_args;
-}
-
 // Input:
 // Output:
 void print_parameters(){
@@ -327,6 +302,8 @@ void print_parameters(){
 	std::cout << blue << "OCT SIM ✪ ‿ ✪ " << ending << std::endl;
 	std::cout << blue << "--------------" << ending << std::endl;
 	std::cout << std::endl;
+	std::cout << std::endl;
+	printf("\r >> Legacy mode: %s", legacy ? "true" : "false");
 	std::cout << std::endl;
 	printf("\r >> plot flag: %s", pltflag ? "true" : "false");
 	std::cout << std::endl;
@@ -370,12 +347,18 @@ void print_parameters(){
 	printf("\r >> MM Efficiencies");
 	std::cout << std::endl;
 	for (unsigned int i = 0; i < mm_eff.size(); i++){
-		if ( i % NPCB_PER_PLANE == 0 ){ 
-			printf("\r >> MM efficiency, Plane %i", i / NPCB_PER_PLANE);
+		if(legacy){
+			if(i >= NPLANES) break;
+			else{
+				printf("\r >> MM efficiency, chamber %i: %f", i, mm_eff[i]);
+				std::cout << std::endl;
+			}
+		}
+		else{
+			printf("\r >> MM efficiency, Plane %i, PCB %i: %f", i / NPCB_PER_PLANE, i%NPCB_PER_PLANE, mm_eff[i]);
 			std::cout << std::endl;
 		}
-		printf("\r >> MM efficiency, PCB %i: %f", i%NPCB_PER_PLANE, mm_eff[i]);
-		std::cout << std::endl;
+		
 	}
 	printf("\r >> Seed for TRandom3: %d", ran->GetSeed());
 	std::cout << std::endl;

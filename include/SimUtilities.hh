@@ -78,13 +78,14 @@ void kill_random(int killran, // bool if you want to kill one plane PCB randomly
     }
 }
 
+/******************************************************** 64 PCB Mode ********************************************************/
 // Input: number of planes, number of PCBs per plane, and the detector hit vector
 // Output: 
 //	- art bunch crossing index (art_time/bunch crossing time) as determined by a hit on a Plane
 //	- vector of Hits based on registered hits on the Planes
 //	- number of hits on x1, u, v, x2 planes as determined by hits in the PCBs
 //	- fills the x strip resolution histogram
-std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits(int NPLANES, // number of planes on the detector
+std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_64PCBs(int NPLANES, // number of planes on the detector
 																			  int NPCB_PER_PLANE, // number of PCBs per plane
 																			  GeoOctuplet *GEOMETRY, // geometry of the octuplet
 																			  TH1F *h_xres_strip, // x plane resolution histogram
@@ -103,7 +104,6 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits(i
 {
 
     vector<int> art_bc(NPLANES, -1.);
-    double smallest_bc = 999999.;
     
     vector<Hit*> hits;
 
@@ -191,5 +191,167 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits(i
 
     return std::make_tuple(art_bc, hits, n_x1, n_u, n_v, n_x2);
 }
+
+
+
+/************************************** LEGACY SUPPORT FOR PREVIOUS VERSION **************************************/
+// Legacy: 
+//	- Only uses 8 efficiencies, one for each layer, to calculated the number of hits. 
+//	- The 8 efficiencies that are read are the first 8 entries of oct_hitmask
+// Input: number of planes, number of PCBs per plane, and the detector hit vector
+// Output: 
+//	- art bunch crossing index (art_time/bunch crossing time) as determined by a hit on a Plane
+//	- vector of Hits based on registered hits on the Planes
+//	- number of hits on x1, u, v, x2 planes as determined by hits in the PCBs
+//	- fills the x strip resolution histogram
+std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_LEGACY(int NPLANES, // number of planes on the detector
+																			  		  GeoOctuplet *GEOMETRY, // geometry of the octuplet
+																			  		  TH1F *h_xres_strip, // x plane resolution histogram
+																			  		  TRandom3 *ran, // random number generator from main method
+																			  		  int sig_art, // art time resolution from set_chamber (in ns)
+																			  		  int m_sig_art_x, // art time resolution (in ns)
+																			  		  int bc_length, // time between bunch crossing (in ns)
+																					  vector<double> & xpos, // x positions of generated muons
+																					  vector<double> & ypos, // y positions of generated muons
+																					  bool smear_art, // True to smear the art strip
+																					  bool funcsmear_art, // True to use custom smear function
+																					  TF1 *func, // custom smear function
+																					  bool bkgonly, // True then do not add hit to Hits vector
+																					  std::vector<int> oct_hitmask // detector hit vector
+																			  		)
+{
+
+    vector<int> art_bc(NPLANES, -1.);
+    
+    vector<Hit*> hits;
+
+    int n_u = 0;
+    int n_v = 0;
+    int n_x1 = 0;
+    int n_x2 = 0;
+    
+    double art_time;
+    
+    double strip, strip_smear;
+    for ( int j = 0; j < NPLANES; j++){
+      if (oct_hitmask[j] == 1){
+        if (j < 2)
+          n_x1++;
+        else if (j > 5)
+          n_x2++;
+        else if (j == 2|| j ==4)
+          n_u++;
+        else
+          n_v++;
+      art_time = ran->Gaus(400.,(double)(sig_art));
+      art_bc[j] = (int)floor(art_time/25.);
+      Hit* newhit = nullptr;
+
+      strip = GEOMETRY->Get(j).channel_from_pos(xpos[j],ypos[j]);
+      if (smear_art){
+        strip_smear = round(ran->Gaus(strip,m_sig_art_x));
+      }
+      else if (funcsmear_art){
+        strip_smear = round( strip + func->GetRandom(-10, 10)/0.4 );
+      }
+      else{
+        strip_smear = strip;
+      }
+
+      // sanity check
+      if (j < 2 || j > 5)
+        h_xres_strip->Fill(xpos[j] - (GEOMETRY->Get(j).Origin().X() + GEOMETRY->Get(j).LocalXatYbegin(strip_smear)));
+
+      newhit = new Hit(j, art_bc[j], strip_smear, false, *GEOMETRY);
+      //newhit = new Hit(j, art_bc[j], xpos[j], ypos[j], false, *GEOMETRY);
+      if (!bkgonly)
+	hits.push_back(newhit);
+      }
+    }
+
+    return std::make_tuple(art_bc, hits, n_x1, n_u, n_v, n_x2);
+}
+
+/************************************************ DECIDE WHICH VERSION TO USE ************************************************/
+// Input: number of planes, number of PCBs per plane, and the detector hit vector
+// Output: 
+//	- art bunch crossing index (art_time/bunch crossing time) as determined by a hit on a Plane
+//	- vector of Hits based on registered hits on the Planes
+//	- number of hits on x1, u, v, x2 planes as determined by hits in the PCBs
+//	- fills the x strip resolution histogram
+std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits(int NPLANES, // number of planes on the detector
+																			  int NPCB_PER_PLANE, // number of PCBs per plane
+																			  GeoOctuplet *GEOMETRY, // geometry of the octuplet
+																			  TH1F *h_xres_strip, // x plane resolution histogram
+																			  TRandom3 *ran, // random number generator from main method
+																			  int sig_art, // art time resolution from set_chamber (in ns)
+																			  int m_sig_art_x, // art time resolution (in ns)
+																			  int bc_length, // time between bunch crossing (in ns)
+																			  vector<double> & xpos, // x positions of generated muons
+																			  vector<double> & ypos, // y positions of generated muons
+																			  bool smear_art, // True to smear the art strip
+																			  bool funcsmear_art, // True to use custom smear function
+																			  TF1 *func, // custom smear function
+																			  bool bkgonly, // True then do not add hit to Hits vector
+																			  std::vector<int> oct_hitmask, // detector hit vector
+																			  bool legacy // Legacy mode crosscheck
+																			  )
+{
+
+    vector<int> art_bc(NPLANES, -1.);
+    vector<Hit*> hits;
+    int n_u = 0;
+    int n_v = 0;
+    int n_x1 = 0;
+    int n_x2 = 0;
+    
+    if (legacy){
+    	/*
+    	printf("*****************************************************************\n");
+    	printf("********************* LEGACY MODE TURNED ON *********************\n");
+    	printf("*****************************************************************\n");*/
+	    std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits_LEGACY(NPLANES, 
+                                                       				  GEOMETRY, 
+				                                                      h_xres_strip, 
+				                                                      ran, 
+				                                                      sig_art,
+				                                                      m_sig_art_x,
+				                                                      bc_length,
+				                                                      xpos,
+				                                                      ypos,
+				                                                      smear_art,
+				                                                      funcsmear_art,
+				                                                      func,
+				                                                      bkgonly,
+				                                                      oct_hitmask);
+	    return std::make_tuple(art_bc, hits, n_x1, n_u, n_v, n_x2);
+    }
+    else{
+    	/*
+    	printf("*****************************************************************\n");
+    	printf("********************* 64 PCB MODE TURNED ON *********************\n");
+    	printf("*****************************************************************\n");*/
+	    std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits_64PCBs(NPLANES, 
+	    															  NPCB_PER_PLANE,
+                                                       				  GEOMETRY, 
+				                                                      h_xres_strip, 
+				                                                      ran, 
+				                                                      sig_art,
+				                                                      m_sig_art_x,
+				                                                      bc_length,
+				                                                      xpos,
+				                                                      ypos,
+				                                                      smear_art,
+				                                                      funcsmear_art,
+				                                                      func,
+				                                                      bkgonly,
+				                                                      oct_hitmask);
+	    return std::make_tuple(art_bc, hits, n_x1, n_u, n_v, n_x2);
+    }
+    
+    return std::make_tuple(art_bc, hits, n_x1, n_u, n_v, n_x2);
+}
+
+
 
 #endif

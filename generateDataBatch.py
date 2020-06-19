@@ -6,18 +6,18 @@ from datetime import datetime
 import threading 
 
 def formatMMEffString(mm_eff):
-        s = '\''
-        for i in mm_eff:
-                s+='{},'.format(i)
-        s = s[:-1]+'\''
-        return s
+    s = '\''
+    for i in mm_eff:
+            s+='{},'.format(i)
+    s = s[:-1]+'\''
+    return s
 
 def formatMMEffStringFileName(mm_eff):
 	s = ''
-        for i in mm_eff:
-                s+='{}'.format(i*10)
-        s = s[:-1]
-        return s
+	for i in mm_eff:
+	        s+='{}'.format(i*10)
+	s = s[:-1]
+	return s
 
 # construct output log file
 sys.stdout = open("generateDataBatch.log", "w")

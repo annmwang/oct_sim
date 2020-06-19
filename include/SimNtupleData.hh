@@ -72,6 +72,8 @@ public:
     bool smear_art; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
     bool funcsmear_art; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
     int chamber = -999.; // Chamber value
+    bool legacy; // Enable legacy mode
+    int seed; // Random number generator seed
 
     void SetBranchData(TTree *t);
     void SetBranchArgs(TTree *t);
@@ -133,6 +135,8 @@ void SimNtupleData::SetBranchArgs(TTree *t){
     t->Branch("smear_art", &smear_art);
     t->Branch("funcsmear_art", &funcsmear_art);
     t->Branch("chamber", &chamber);
+    t->Branch("legacy", &legacy);
+    t->Branch("seed", &seed);
 }
 
 // Input: TTree
@@ -185,4 +189,6 @@ void SimNtupleData::SetAddressReadArgs(TTree *t){
     t->SetBranchAddress("smear_art", &smear_art);
     t->SetBranchAddress("funcsmear_art", &funcsmear_art);
     t->SetBranchAddress("chamber", &chamber);
+    t->SetBranchAddress("legacy", &legacy);
+    t->SetBranchAddress("seed", &seed);
 }

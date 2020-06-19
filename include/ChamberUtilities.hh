@@ -298,12 +298,15 @@ double predicted_rate(int strip, string chamber) {
 
 // Input:
 // Output:
-vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff){
+vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff, bool legacy){
   //gives detector response to muon, returns list of which planes registered hit
   
   int n_mm = 0;
   vector<int> oct_hitmask(NPLANES*NPCB_PER_PLANE,0);
   for ( int j=0; j < NPLANES*NPCB_PER_PLANE; j++){
+    // For legacy support explicitly set the other oct hit values to -999
+    if( legacy && j >= NPLANES) oct_hitmask[j] = -999;
+    
     if (ran->Uniform(0.,1.) < mm_eff[j]){
       oct_hitmask[j] = 1;
       n_mm++;
