@@ -157,10 +157,8 @@ def clean_dict(inputs):
 	return param_dict
 
 
-			
-#inputs = parse_stdout('/Users/anthonybadea/Desktop/ATL-COM-MUON-2018-017/batch-2018-03-27-10h16m14s_stdout_40400176.txt')
-#print(inputs)
-#param_dict = clean_dict(inputs)
+# Input: list of efficiencies
+# Output: string of efficiencies separated by commas
 def formatMMEffString(mm_eff):
     s = '\''
     for i in mm_eff:
@@ -168,6 +166,8 @@ def formatMMEffString(mm_eff):
     s = s[:-1]+'\''
     return s
 
+# Input: stdout file
+# Output: string of arguments
 def get_sim_args(stdout = ''):
 	inputs = parse_stdout(stdout)
 	param_dict = clean_dict(inputs)
@@ -195,8 +195,7 @@ def options():
     return parser.parse_args()
 
 
-# Input: job arguments
-# Output: None, calls the job operation 
+# Main method to launch jobs or get arguments from stdout file
 def main():
 	ops = options()
 	
