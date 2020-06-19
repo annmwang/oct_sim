@@ -5,6 +5,9 @@ Run like:
 > python python/batch.py -j 10 -a "-n 1000 -ch large -b 1"
 
 To set the seed based on job number, use "-seed \$SLURM_JOB_ID" in the -a arguments.
+
+Written by: Ann Wang and Alexander Tuna
+Modified by: Anthony Badea (June 2020)
 """
 
 import argparse

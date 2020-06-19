@@ -1,3 +1,11 @@
+/************** 
+
+SIMULATION DATA TREES
+
+Made by: Anthony Badea (June 2020)
+
+**************/
+
 //cpp dependencies
 #include <vector>
 #include <string>
