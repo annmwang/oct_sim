@@ -286,7 +286,8 @@ int main(int argc, char* argv[]) {
                 NPLANES, 
                 NPCB_PER_PLANE, 
                 ran, 
-                oct_hitmask);
+                oct_hitmask,
+                legacy);
 
     vector<int> art_bc(NPLANES, -1.);
     vector<Hit*> hits;

@@ -152,7 +152,7 @@ def clean_dict(inputs):
 	param_dict['efficiencies'] = ['-e',[val[1] for val in param_dict['efficiencies']]]
 	
 	#### DIRTY TEST ####
-	param_dict['nEvents'] = ['-n', 10]
+	param_dict['nEvents'] = ['-n', 1000]
 
 	return param_dict
 
