@@ -307,11 +307,11 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
   for ( int j=0; j < NPLANES*NPCB_PER_PLANE; j++){
     // For legacy support explicitly set the other oct hit values to -999
     if( legacy && j >= NPLANES){
-      oct_hitmask[j] = -999;
+      oct_hitmask[j] = 0;
       break;
     }
-
-    if (ran->Uniform(0.,1.) < mm_eff[j]){
+    int RAND = ran->Uniform(0.,1.);
+    if (RAND < mm_eff[j]){
       oct_hitmask[j] = 1;
       n_mm++;
     }

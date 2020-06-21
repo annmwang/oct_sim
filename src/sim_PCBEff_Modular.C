@@ -213,31 +213,31 @@ int main(int argc, char* argv[]) {
       // Added by Anthony Badea (June 2020)
       if( i == 0){
       	SN.bkgrate = bkgrate; // Hz per strip
-    	SN.m_xroad = m_xroad; // size of x road in strips
-    	SN.m_NSTRIPS = m_NSTRIPS; // number of x strips
-	    SN.m_bcwind = m_bcwind; // fixed time window (in bunch crossings) during which the algorithm collects ART hits
-	    SN.m_sig_art = m_sig_art; // art time resolution (in nanoseconds)
-	    SN.killran = killran; // bool if you want to kill one plane randomly
-	    SN.killxran = killxran; // bool if you want to kill one X plane randomly 
-	    SN.killuvran = killuvran; // bool if you want to kill one U or V plane randomly 
-	    SN.m_sig_art_x = m_sig_art_x; // ART position resolution (in strips). used to smear ART position
-	    SN.mm_eff = &mm_eff; // efficiency of each PCB Left/Right of the MM
-	    SN.m_xthr = m_xthr; // required total number of hits on all x channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
-	    SN.m_uvthr = m_uvthr; // required total number of hits on all u and v channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
-	    SN.bkgflag = bkgflag; // decides if background should be generated
-	    SN.pltflag = pltflag; // decides if event displays should be plotted
-	    SN.uvrflag = uvrflag; // decides if ??? used in set_chamber
-	    SN.trapflag = trapflag; // decides if ??? used in create_roads
-	    SN.ideal_tp = ideal_tp; // decides if ??? used in Road.hh
-	    SN.ideal_vmm = ideal_vmm; // decides if ??? used in finder function
-	    SN.ideal_addc = ideal_addc; // decides if ??? used in finder function
-	    SN.write_tree = write_tree; // decides if an output TTree is produced
-	    SN.bkgonly = bkgonly; // decides if only the background should be produced
-	    SN.smear_art = smear_art; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
-	    SN.funcsmear_art = funcsmear_art; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
-	    //SN.chamber = chamber; // Chamber value
-	    SN.legacy = legacy; // Enable legacy mode
-	    SN.seed = seed; // Random number generator seed
+      	SN.m_xroad = m_xroad; // size of x road in strips
+      	SN.m_NSTRIPS = m_NSTRIPS; // number of x strips
+  	    SN.m_bcwind = m_bcwind; // fixed time window (in bunch crossings) during which the algorithm collects ART hits
+  	    SN.m_sig_art = m_sig_art; // art time resolution (in nanoseconds)
+  	    SN.killran = killran; // bool if you want to kill one plane randomly
+  	    SN.killxran = killxran; // bool if you want to kill one X plane randomly 
+  	    SN.killuvran = killuvran; // bool if you want to kill one U or V plane randomly 
+  	    SN.m_sig_art_x = m_sig_art_x; // ART position resolution (in strips). used to smear ART position
+  	    SN.mm_eff = &mm_eff; // efficiency of each PCB Left/Right of the MM
+  	    SN.m_xthr = m_xthr; // required total number of hits on all x channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+  	    SN.m_uvthr = m_uvthr; // required total number of hits on all u and v channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+  	    SN.bkgflag = bkgflag; // decides if background should be generated
+  	    SN.pltflag = pltflag; // decides if event displays should be plotted
+  	    SN.uvrflag = uvrflag; // decides if ??? used in set_chamber
+  	    SN.trapflag = trapflag; // decides if ??? used in create_roads
+  	    SN.ideal_tp = ideal_tp; // decides if ??? used in Road.hh
+  	    SN.ideal_vmm = ideal_vmm; // decides if ??? used in finder function
+  	    SN.ideal_addc = ideal_addc; // decides if ??? used in finder function
+  	    SN.write_tree = write_tree; // decides if an output TTree is produced
+  	    SN.bkgonly = bkgonly; // decides if only the background should be produced
+  	    SN.smear_art = smear_art; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
+  	    SN.funcsmear_art = funcsmear_art; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
+  	    //SN.chamber = chamber; // Chamber value
+  	    SN.legacy = legacy; // Enable legacy mode
+  	    SN.seed = seed; // Random number generator seed
       	tree_args->Fill();
       }
     }
@@ -260,7 +260,6 @@ int main(int argc, char* argv[]) {
     
     double xmuon,ymuon,thx,thy;
     std::tie(xmuon,ymuon,thx,thy) = generate_muon(xpos, ypos, zpos, string(chamberType), angcos, angx, angy, trapflag);
-
     SN.real_x_muon = xmuon;
     SN.real_y_muon = ymuon;
 
@@ -279,8 +278,7 @@ int main(int argc, char* argv[]) {
 
     // Function location: ChamberUtilities.hh
     vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff, legacy);
-
-    kill_random(killran, 
+    oct_hitmask = kill_random(killran, 
                 killxran, 
                 killuvran, 
                 NPLANES, 
@@ -313,7 +311,6 @@ int main(int argc, char* argv[]) {
                                                            bkgonly,
                                                            oct_hitmask,
                                                            legacy);
-
     //################################################################//
     //################################################################//
 

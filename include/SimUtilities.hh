@@ -43,7 +43,7 @@ Commented / Modified by: Anthony Badea (June 2020)
 //	- number of planes
 //	- number of PCBs per plane
 // Output: no ouput, operates on the detector hit vector 
-void kill_random_64PCBS(int killran, // bool if you want to kill one plane PCB randomly
+std::vector<int> kill_random_64PCBS(int killran, // bool if you want to kill one plane PCB randomly
 				 int killxran, // bool if you want to kill one X plane PCB randomly
 				 int killuvran, // bool if you want to kill one UV plane PCB randomly
 				 int NPLANES, // number of planes on the detector
@@ -79,6 +79,8 @@ void kill_random_64PCBS(int killran, // bool if you want to kill one plane PCB r
     	int rand_pcb = ran->Integer(NPCB_PER_PLANE);
       	oct_hitmask[rand_plane*rand_pcb] = 0;
     }
+
+    return oct_hitmask;
 }
 
 
@@ -93,21 +95,26 @@ void kill_random_64PCBS(int killran, // bool if you want to kill one plane PCB r
 //	- number of planes
 //	- number of PCBs per plane
 // Output: no ouput, operates on the detector hit vector 
-void kill_random_LEGACY(int killran, // bool if you want to kill one plane PCB randomly
-				 int killxran, // bool if you want to kill one X plane PCB randomly
-				 int killuvran, // bool if you want to kill one UV plane PCB randomly
-				 int NPLANES, // number of planes on the detector
-			     int NPCB_PER_PLANE, // number of PCBs per plane
-			     TRandom3 *ran, // random number generator from main method
-			     std::vector<int> oct_hitmask // detector hit vector
+std::vector<int> kill_random_LEGACY(int killran, // bool if you want to kill one plane PCB randomly
+				                int killxran, // bool if you want to kill one X plane PCB randomly
+				                int killuvran, // bool if you want to kill one UV plane PCB randomly
+				                int NPLANES, // number of planes on the detector
+			                  int NPCB_PER_PLANE, // number of PCBs per plane
+			                  TRandom3 *ran, // random number generator from main method
+			                  std::vector<int> oct_hitmask // detector hit vector
 				 )
 {
-    if (killran)
-      oct_hitmask[ran->Integer(8)] = 0;
+    if (killran){
+      
+      int rand_indx = ran->Integer(8);
+      oct_hitmask[rand_indx] = 0;
+    }
     if (killxran)
       oct_hitmask[vector<int> {0, 1, 6, 7}[ran->Integer(4)]] = 0;
     if (killuvran)
       oct_hitmask[vector<int> {2, 3, 4, 5}[ran->Integer(4)]] = 0;
+
+    return oct_hitmask;
 }
 
 
@@ -120,18 +127,18 @@ void kill_random_LEGACY(int killran, // bool if you want to kill one plane PCB r
 //	- number of PCBs per plane
 //  - legacy bool to decide which version to use
 // Output: no ouput, operates on the detector hit vector 
-void kill_random(int killran, // bool if you want to kill one plane PCB randomly
-				 int killxran, // bool if you want to kill one X plane PCB randomly
-				 int killuvran, // bool if you want to kill one UV plane PCB randomly
-				 int NPLANES, // number of planes on the detector
-			     int NPCB_PER_PLANE, // number of PCBs per plane
-			     TRandom3 *ran, // random number generator from main method
-			     std::vector<int> oct_hitmask, // detector hit vector
-			     bool legacy // Legacy mode crosscheck
+std::vector<int> kill_random(int killran, // bool if you want to kill one plane PCB randomly
+				         int killxran, // bool if you want to kill one X plane PCB randomly
+				         int killuvran, // bool if you want to kill one UV plane PCB randomly
+				         int NPLANES, // number of planes on the detector
+			           int NPCB_PER_PLANE, // number of PCBs per plane
+			           TRandom3 *ran, // random number generator from main method
+			           std::vector<int> oct_hitmask, // detector hit vector
+			           bool legacy // Legacy mode crosscheck
 				 )
 {
     if(legacy){
-	    kill_random_LEGACY(killran, 
+	    oct_hitmask = kill_random_LEGACY(killran, 
             killxran, 
             killuvran, 
             NPLANES, 
@@ -140,7 +147,7 @@ void kill_random(int killran, // bool if you want to kill one plane PCB randomly
             oct_hitmask);
     }
     else{
-    	kill_random_64PCBS(killran, 
+    	oct_hitmask = kill_random_64PCBS(killran, 
             killxran, 
             killuvran, 
             NPLANES, 
@@ -148,6 +155,8 @@ void kill_random(int killran, // bool if you want to kill one plane PCB randomly
             ran, 
             oct_hitmask);
     }
+
+    return oct_hitmask;
 }
 
 /******************************************************** 64 PCB Mode ********************************************************/
@@ -303,8 +312,8 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_L
     int n_x2 = 0;
     
     double art_time;
-    
     double strip, strip_smear;
+
     for ( int j = 0; j < NPLANES; j++){
       if (oct_hitmask[j] == 1){
         if (j < 2)
