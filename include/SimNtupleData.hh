@@ -29,7 +29,6 @@ public:
 
     // Variables to write out to the tree
     int EventNum = 0;
-    int NEvent = 0; // number of events to be generated
     int Ntriggers = 0; // number of triggers on the roads
 
     double real_x_muon = 0; // x-location of a real muon
@@ -52,6 +51,7 @@ public:
     std::vector<double> * dtheta = 0; // ??
 
     // simulation parameters
+    int NEvent = 0; // number of events to be generated
     int bkgrate = -999.; // Hz per strip
     int m_xroad = -999.; // size of x road in strips
     int m_NSTRIPS = -999.; // number of x strips
@@ -425,21 +425,21 @@ void SimNtupleData::FillHistsData(std::vector< std::string > hists){
 void SimNtupleData::InitializeHistsData_ALL(){
   // Histograms for simulation data
   h_EventNum = new TH1D(Form("EventNum_%i",ID), Form("EventNum_%i",ID), 10000, 0, 10000); 
-  h_Ntriggers = new TH1D(Form("Ntriggers_%i",ID), Form("Ntriggers_%i",ID), 2000, -100, 100); 
-  h_real_x_muon = new TH1D(Form("real_x_muon_%i",ID), Form("real_x_muon_%i",ID), 2000, -100, 100); 
-  h_real_y_muon = new TH1D(Form("real_y_muon_%i",ID), Form("real_y_muon_%i",ID), 2000, -100, 100); 
-  h_iRoad_x = new TH1D(Form("iRoad_x_%i",ID), Form("iRoad_x_%i",ID), 2000, -100, 100); 
-  h_iRoad_u = new TH1D(Form("iRoad_u_%i",ID), Form("iRoad_u_%i",ID), 2000, -100, 100); 
-  h_iRoad_v = new TH1D(Form("iRoad_v_%i",ID), Form("iRoad_v_%i",ID), 2000, -100, 100); 
-  h_Hit_strips = new TH1D(Form("Hit_strips_%i",ID), Form("Hit_strips_%i",ID), 2000, -100, 100); 
-  h_Hit_planes = new TH1D(Form("Hit_planes_%i",ID), Form("Hit_planes_%i",ID), 2000, -100, 100); 
-  h_Hit_ages = new TH1D(Form("Hit_ages_%i",ID), Form("Hit_ages_%i",ID), 2000, -100, 100); 
-  h_trigger_BC = new TH1D(Form("trigger_BC_%i",ID), Form("trigger_BC_%i",ID), 2000, -100, 100); 
-  h_N_muon = new TH1D(Form("N_muon_%i",ID), Form("N_muon_%i",ID), 2000, -100, 100); 
-  h_N_xmuon = new TH1D(Form("N_xmuon_%i",ID), Form("N_xmuon_%i",ID), 2000, -100, 100); 
-  h_trig_x = new TH1D(Form("trig_x_%i",ID), Form("trig_x_%i",ID), 2000, -100, 100); 
-  h_trig_y = new TH1D(Form("trig_y_%i",ID), Form("trig_y_%i",ID), 2000, -100, 100); 
-  h_dtheta = new TH1D(Form("dtheta_%i",ID), Form("dtheta_%i",ID), 2000, -100, 100);   
+  h_Ntriggers = new TH1D(Form("Ntriggers_%i",ID), Form("Ntriggers_%i",ID), 20, 0, 20); 
+  h_real_x_muon = new TH1D(Form("real_x_muon_%i",ID), Form("real_x_muon_%i",ID), 360, 0, 3600); 
+  h_real_y_muon = new TH1D(Form("real_y_muon_%i",ID), Form("real_y_muon_%i",ID), 360, 0, 2400); 
+  h_iRoad_x = new TH1D(Form("iRoad_x_%i",ID), Form("iRoad_x_%i",ID), 120, 0, 1200); 
+  h_iRoad_u = new TH1D(Form("iRoad_u_%i",ID), Form("iRoad_u_%i",ID), 120, 0, 1200); 
+  h_iRoad_v = new TH1D(Form("iRoad_v_%i",ID), Form("iRoad_v_%i",ID), 120, 0, 1200); 
+  h_Hit_strips = new TH1D(Form("Hit_strips_%i",ID), Form("Hit_strips_%i",ID), 900, 0, 9000); 
+  h_Hit_planes = new TH1D(Form("Hit_planes_%i",ID), Form("Hit_planes_%i",ID), 8, 0, 8); 
+  h_Hit_ages = new TH1D(Form("Hit_ages_%i",ID), Form("Hit_ages_%i",ID), 8, 0, 8); 
+  h_trigger_BC = new TH1D(Form("trigger_BC_%i",ID), Form("trigger_BC_%i",ID), 12, 0, 12); 
+  h_N_muon = new TH1D(Form("N_muon_%i",ID), Form("N_muon_%i",ID), 12, 0, 12); 
+  h_N_xmuon = new TH1D(Form("N_xmuon_%i",ID), Form("N_xmuon_%i",ID), 20, 0, 20); 
+  h_trig_x = new TH1D(Form("trig_x_%i",ID), Form("trig_x_%i",ID), 360, 0, 3600); 
+  h_trig_y = new TH1D(Form("trig_y_%i",ID), Form("trig_y_%i",ID), 230, 0, 2300); 
+  h_dtheta = new TH1D(Form("dtheta_%i",ID), Form("dtheta_%i",ID), 50, -0.05, 0.05);   
 }
 
 
@@ -471,8 +471,8 @@ void SimNtupleData::FillHistsData_ALL(){
 void SimNtupleData::InitializeHistsArgs(std::vector< std::string > hists){
   // Histograms for simulation parameters
   for( auto hist : hists ){
-    if( hist == "NEvent"){ h_NEvent = new TH1D(Form("NEvent_%i",ID), Form("NEvent_%i",ID), 2000, -100, 100); }
-    if( hist == "bkgrate"){  h_bkgrate = new TH1D(Form("bkgrate_%i",ID), Form("bkgrate_%i",ID), 2000, -100, 100); }
+    if( hist == "NEvent"){ h_NEvent = new TH1D(Form("NEvent_%i",ID), Form("NEvent_%i",ID), 10000, 0, 10000); }
+    if( hist == "bkgrate"){  h_bkgrate = new TH1D(Form("bkgrate_%i",ID), Form("bkgrate_%i",ID), 10000, 0, 10000); }
     if( hist == "m_xroad"){ h_m_xroad = new TH1D(Form("m_xroad_%i",ID), Form("m_xroad_%i",ID), 2000, -100, 100); }
     if( hist == "m_NSTRIPS"){ h_m_NSTRIPS = new TH1D(Form("m_NSTRIPS_%i",ID), Form("m_NSTRIPS_%i",ID), 2000, -100, 100); }
     if( hist == "m_bcwind"){ h_m_bcwind = new TH1D(Form("m_bcwind_%i",ID), Form("m_bcwind_%i",ID), 2000, -100, 100); }

@@ -212,6 +212,7 @@ int main(int argc, char* argv[]) {
 
       // Added by Anthony Badea (June 2020)
       if( i == 0){
+        SN.NEvent = nevents;
       	SN.bkgrate = bkgrate; // Hz per strip
       	SN.m_xroad = m_xroad; // size of x road in strips
       	SN.m_NSTRIPS = m_NSTRIPS; // number of x strips
@@ -235,7 +236,7 @@ int main(int argc, char* argv[]) {
   	    SN.bkgonly = bkgonly; // decides if only the background should be produced
   	    SN.smear_art = smear_art; // decides if the arrival time of the ART hits due to muon tracks is smeared with a gaussian with a σ of 32 ns to emulate the ART time distribution
   	    SN.funcsmear_art = funcsmear_art; // ONLY used if smear_art is false. Uses a custom smearing function rather than a gaussian. 
-  	    //SN.chamber = chamber; // Chamber value
+  	    SN.chamber = chamber; // Chamber value
   	    SN.legacy = legacy; // Enable legacy mode
   	    SN.seed = seed; // Random number generator seed
       	tree_args->Fill();

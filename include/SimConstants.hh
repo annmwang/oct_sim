@@ -93,6 +93,7 @@ TF1* func = 0;
 
 char outputFileName[400];
 char chamberType[400];
+int chamber = 0;
 
 bool b_out = false;
 bool ch_type = false;
@@ -161,6 +162,10 @@ int read_parameters_from_user(int argc, char* argv[]){
 	    if (strncmp(argv[i],"-ch",3)==0){
 	      sscanf(argv[i+1],"%s", chamberType);
 	      ch_type = true;
+	      std::cout<<argv[i+1]<<std::endl;
+	      if(strncmp(argv[i+1],"small",5) == 0) { std::cout<<__LINE__<<std::endl; chamber = 0;}
+	      else if(strncmp(argv[i+1],"large",5) == 0) { std::cout<<__LINE__<<std::endl; chamber = 1;}
+	      else if(strncmp(argv[i+1],"oct",3) == 0) { std::cout<<__LINE__<<std::endl; chamber = 2;}
 	    }
 	    if (strncmp(argv[i],"-sig",4)==0){
 	      m_sig_art = atoi(argv[i+1]);

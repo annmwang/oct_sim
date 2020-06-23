@@ -10,16 +10,20 @@
 #include <TDatime.h>
 #include <TCanvas.h>
 #include <TPad.h>
+#include <TLegend.h>
+#include <TGaxis.h>
 
 // local dependencies 
-#include "../include/SimNtupleData.hh"
+#include "SimNtupleData.hh"
 #include "VectorDict.cxx"
-
-
+#include "HttStyles.cc"
+#include "styleUtil.h"
+#include "vanGoghPalette.h"
 
 int plot_sim(const std::string inFileName1, // First input file
-             const std::string inFileName2, // Second input file
-             bool legacy = true, // Comparison to legacy simulation file
+             const std::string inFileName2 = "", // Second input file
+             bool legacyFile1 = false, // Comparison to legacy simulation file
+             bool legacyFile2 = false, // Comparison to legacy simulation file
 			       const std::string outFileName = "outFileName.root", // Output file
 			       const std::string treeName = "gingko", // Tree name for simulation data
              const std::string treeArgsName = "sim_args" // Tree name for simulation args
@@ -35,6 +39,7 @@ int plot_sim(const std::string inFileName1, // First input file
   SN1.SetAddressReadData(t1);
   SN1.InitializeHistsData_ALL();
  
+  if(inFileName2 == "") inFileName2 = inFileName1;
   TFile *inFile2 = new TFile(inFileName2.c_str(), "READ");
   TTree *t2 = (TTree*)inFile2->Get(treeName.c_str());
   TTree *t2_args = (TTree*)inFile2->Get(treeArgsName.c_str());
@@ -51,25 +56,38 @@ int plot_sim(const std::string inFileName1, // First input file
   SNd.InitializeHistsData_ALL();
   
 
-  // If not legacy mode
-  if(!legacy){
+  // Initialize legacy mode setting for file 1
+  if(!legacyFile1){
     SN1.SetAddressReadArgs(t1_args);
-    SN2.SetAddressReadArgs(t2_args);
     SN1.InitializeHistsArgs_ALL();
     SN1.InitializeHistsMap_ALL();
+  }
+  else{
+    SN1.InitializeHistsMap_DATA();
+  }
+
+  // Initialize legacy mode setting for file 2
+  if(!legacyFile2){
+    SN2.SetAddressReadArgs(t2_args);
     SN2.InitializeHistsArgs_ALL();
     SN2.InitializeHistsMap_ALL();
+  }
+  else{
+    SN2.InitializeHistsMap_DATA();
+  }
+
+  // Initialize legacy mode setting for ratio and difference plots
+  if(!legacyFile1 && !legacyFile2){
     SNr.InitializeHistsArgs_ALL();
     SNr.InitializeHistsMap_ALL();
     SNd.InitializeHistsArgs_ALL();
     SNd.InitializeHistsMap_ALL();
   }
   else{
-    SN1.InitializeHistsMap_DATA();
-    SN2.InitializeHistsMap_DATA();
     SNr.InitializeHistsMap_DATA();
     SNd.InitializeHistsMap_DATA();
   }
+
 
   static const unsigned int nevent = (int)t1->GetEntries();
 
@@ -84,11 +102,14 @@ int plot_sim(const std::string inFileName1, // First input file
     SN1.FillHistsData_ALL();
     SN2.FillHistsData_ALL();
 
-    if( !legacy && i == 0){
+    // Initialize legacy mode setting for file 1
+    if(!legacyFile1 && i == 0){
       t1_args->GetEntry(i);
-      t2_args->GetEntry(i);
-
       SN1.FillHistsArgs_ALL();
+    }
+
+    if(!legacyFile2 && i == 0){
+      t2_args->GetEntry(i);
       SN2.FillHistsArgs_ALL();
     }
   }
@@ -99,18 +120,28 @@ int plot_sim(const std::string inFileName1, // First input file
   // Take ratio of the plots
   //static const int nHists = SN1.h_map.size();
 
-  std::map<std::string, TH1D*> hr_map;
-  std::map<std::string, TH1D*> hd_map;
+  std::map<std::string, TH1D*> hr_map = SNr.h_map;
+  std::map<std::string, TH1D*> hd_map = SNd.h_map;
 
-  for( auto const& [key, val] : SN1.h_map )
+  for( auto const& [key, val] : hd_map )
   {
-    hr_map[key.c_str()] = (TH1D*) val->Clone((Form("%s_ratio",key.c_str())));
-    hr_map[key.c_str()]->Divide(SN2.h_map[key.c_str()]);
+    //hr_map[key.c_str()] = (TH1D*) val->Clone((Form("%s_ratio",key.c_str())));
+    //hr_map[key.c_str()]->Divide(SN2.h_map[key.c_str()]);
+    //hr_map[key.c_str()]->Divide(SN1.h_map[key.c_str()],SN2.h_map[key.c_str()]);
 
-    hd_map[key.c_str()] = new TH1D((Form("%s_diff",key.c_str())),(Form("%s_diff",key.c_str())), 100, -1, 1);
+    //hd_map[key.c_str()] = new TH1D((Form("%s_diff",key.c_str())),(Form("%s_diff",key.c_str())), 100, -1, 1);
     int nbinsx = SN1.h_map[key.c_str()]->GetXaxis()->GetNbins();
     for( int bin = 0; bin < nbinsx; bin++){
-      hd_map[key.c_str()]->Fill( SN1.h_map[key.c_str()]->GetBinContent(bin) - SN2.h_map[key.c_str()]->GetBinContent(bin));
+      if( key == "EventNum" && bin >= SN1.h_map[key.c_str()]->GetEntries() ) break;
+      else hd_map[key.c_str()]->SetBinContent(bin, SN1.h_map[key.c_str()]->GetBinContent(bin) - SN2.h_map[key.c_str()]->GetBinContent(bin));
+      
+      // fill the ratio histogram
+      if(SN2.h_map[key.c_str()]->GetBinContent(bin) == 0){
+        hr_map[key.c_str()]->SetBinContent(bin, 0);
+      }
+      else{
+        hr_map[key.c_str()]->SetBinContent(bin, SN1.h_map[key.c_str()]->GetBinContent(bin)/SN2.h_map[key.c_str()]->GetBinContent(bin));
+      }      
     }
     //hd_map[key.c_str()] = (TH1D*) val->Clone((Form("%s_diff",key.c_str())));
     //hd_map[key.c_str()]->Add(SN2.h_map[key.c_str()], -1);
@@ -127,101 +158,113 @@ int plot_sim(const std::string inFileName1, // First input file
 
   std::vector<std::string> listOfPdf;
   std::vector<std::string> listOfVar;
+  const char *chamber_names[3];
+  chamber_names[0] = "small";
+  chamber_names[1] = "large";
+  chamber_names[2] = "oct";
+
   TDatime* date = new TDatime();
-  const Double_t splitPoint = 0.35;
+  vanGoghPalette vGP = vanGoghPalette();
+  const Double_t splitPoint = 0.5;
   for( auto const& [key, val] : hd_map ){
     if(hd_map[key.c_str()]->GetBinContent(hd_map[key.c_str()]->GetXaxis()->FindBin(0.0)) != hd_map[key.c_str()]->Integral()){
       printf("Only %f / %f entries are in the zero bin for hist %s \n",hd_map[key.c_str()]->GetBinContent(hd_map[key.c_str()]->GetXaxis()->FindBin(0.0)), hd_map[key.c_str()]->Integral(), hd_map[key.c_str()]->GetName());
     }
     hr_map[key.c_str()]->Write();
+
     hd_map[key.c_str()]->Write();
     //hist->Print();
 
+    TGaxis::SetMaxDigits(3);
 
+    TCanvas* canv_p = new TCanvas("canv_c", "canv_c", 2000, 1000);
+    canv_p->SetTopMargin(0.1);
+    canv_p->SetRightMargin(0.1);
+    canv_p->SetLeftMargin(0.1);
+    canv_p->SetBottomMargin(0.1);
 
-    TCanvas* canv_p = new TCanvas("canv_c", "canv_c", 1000, 500);
-    canv_p->SetTopMargin(0.01);
-    canv_p->SetRightMargin(0.01);
-    canv_p->SetLeftMargin(0.01);
-    canv_p->SetBottomMargin(0.01);
-
-    TPad* pad1_p = new TPad("pad1", "pad1", 0.0, splitPoint, 0.5, 1.0);
+    TPad* pad1_p = new TPad("pad1", "pad1", 0.0, splitPoint, 0.50, 1.0);
     pad1_p->Draw();
-    pad1_p->SetTopMargin(0.01);
-    pad1_p->SetRightMargin(0.01);
-    pad1_p->SetBottomMargin(0.01);
-    pad1_p->SetLeftMargin(pad1_p->GetLeftMargin()*1.3);
+    pad1_p->SetTopMargin(0.1);
+    pad1_p->SetRightMargin(0.1);
+    pad1_p->SetBottomMargin(0.25);
+    pad1_p->SetLeftMargin(0.2);
 
-    TPad* pad2_p = new TPad("pad2", "pad2", 0.0, 0.0, 0.5, splitPoint);
+    TPad* pad2_p = new TPad("pad2", "pad2", 0.0, 0.0, 0.50, splitPoint);
     pad2_p->Draw();
-    pad2_p->SetTopMargin(0.01);
-    pad2_p->SetRightMargin(0.01);
-    pad2_p->SetBottomMargin(pad1_p->GetLeftMargin()*1./splitPoint);
-    pad2_p->SetLeftMargin(pad1_p->GetLeftMargin());
+    pad2_p->SetTopMargin(0.125);
+    pad2_p->SetRightMargin(0.1);
+    pad2_p->SetBottomMargin(0.25);
+    pad2_p->SetLeftMargin(0.2);
 
     TPad* pad3_p = new TPad("pad3", "pad3", 0.5, 0.0, 1.0, 1.0);
     pad3_p->Draw();
-    pad3_p->SetTopMargin(0.01);
-    pad3_p->SetRightMargin(0.01);
-    pad3_p->SetLeftMargin(pad1_p->GetLeftMargin());
-    pad3_p->SetBottomMargin(pad1_p->GetLeftMargin());
+    pad3_p->SetTopMargin(0.1);
+    pad3_p->SetRightMargin(0.1);
+    pad3_p->SetLeftMargin(0.15);
+    pad3_p->SetBottomMargin(0.15);
 
+    std::string xAxisLabel = key;
+    if (xAxisLabel.find("_") < xAxisLabel.length()){
+      xAxisLabel.replace(xAxisLabel.find("_"), 1, " ");
+    }
+    
+    // make plots pretty
+    InitHist(SN1.h_map[key.c_str()], xAxisLabel.c_str(), "Counts", kBlack, 1001,0);
+    SN1.h_map[key.c_str()]->SetLineColorAlpha(vGP.getColor(1),0.85);
+    InitHist(SN2.h_map[key.c_str()], xAxisLabel.c_str(), "Counts", kBlue, 1001,0);
+    SN2.h_map[key.c_str()]->SetLineColorAlpha(vGP.getColor(2),0.85);
+    InitHist(hr_map[key.c_str()], xAxisLabel.c_str(), "Ratio by Bin", kBlack, 1001,0);
+    hr_map[key.c_str()]->SetMarkerColorAlpha(vGP.getColor(5),0.85);
+    InitHist(hd_map[key.c_str()], xAxisLabel.c_str(), "Difference by Bin", kBlack, 1001,0);
+    hd_map[key.c_str()]->SetLineColorAlpha(vGP.getColor(5),0.85);
+
+    
     pad1_p->cd();
-
-    SN1.h_map[key.c_str()]->GetXaxis()->SetTitleFont(43);
-    SN2.h_map[key.c_str()]->GetXaxis()->SetTitleFont(43);
-    hr_map[key.c_str()]->GetXaxis()->SetTitleFont(43);
-    hd_map[key.c_str()]->GetXaxis()->SetTitleFont(43);
-    SN1.h_map[key.c_str()]->GetXaxis()->SetTitleSize(20);
-    SN2.h_map[key.c_str()]->GetXaxis()->SetTitleSize(20);
-    hr_map[key.c_str()]->GetXaxis()->SetTitleSize(20);
-    hd_map[key.c_str()]->GetXaxis()->SetTitleSize(20);
-
-    SN1.h_map[key.c_str()]->GetYaxis()->SetTitleFont(43);
-    SN2.h_map[key.c_str()]->GetYaxis()->SetTitleFont(43);
-    hr_map[key.c_str()]->GetYaxis()->SetTitleFont(43);
-    hd_map[key.c_str()]->GetYaxis()->SetTitleFont(43);
-    SN1.h_map[key.c_str()]->GetYaxis()->SetTitleSize(20);
-    SN2.h_map[key.c_str()]->GetYaxis()->SetTitleSize(20);
-    hr_map[key.c_str()]->GetYaxis()->SetTitleSize(20);
-    hd_map[key.c_str()]->GetYaxis()->SetTitleSize(20);
-
-
-    SN1.h_map[key.c_str()]->GetXaxis()->SetLabelFont(43);
-    SN2.h_map[key.c_str()]->GetXaxis()->SetLabelFont(43);
-    hr_map[key.c_str()]->GetXaxis()->SetLabelFont(43);
-    hd_map[key.c_str()]->GetXaxis()->SetLabelFont(43);
-    SN1.h_map[key.c_str()]->GetXaxis()->SetLabelSize(20);
-    SN2.h_map[key.c_str()]->GetXaxis()->SetLabelSize(20);
-    hr_map[key.c_str()]->GetXaxis()->SetLabelSize(20);
-    hd_map[key.c_str()]->GetXaxis()->SetLabelSize(20);
-
-    SN1.h_map[key.c_str()]->GetYaxis()->SetLabelFont(43);
-    SN2.h_map[key.c_str()]->GetYaxis()->SetLabelFont(43);
-    hr_map[key.c_str()]->GetYaxis()->SetLabelFont(43);
-    hd_map[key.c_str()]->GetYaxis()->SetLabelFont(43);
-    SN1.h_map[key.c_str()]->GetYaxis()->SetLabelSize(20);
-    SN2.h_map[key.c_str()]->GetYaxis()->SetLabelSize(20);
-    hr_map[key.c_str()]->GetYaxis()->SetLabelSize(20);
-    hd_map[key.c_str()]->GetYaxis()->SetLabelSize(20);
-
-    SN1.h_map[key.c_str()]->GetYaxis()->SetTitleOffset(SN1.h_map[key.c_str()]->GetYaxis()->GetTitleOffset()*3.);
-    hr_map[key.c_str()]->GetYaxis()->SetTitleOffset(SN1.h_map[key.c_str()]->GetYaxis()->GetTitleOffset());
-    hr_map[key.c_str()]->GetXaxis()->SetTitleOffset(hr_map[key.c_str()]->GetXaxis()->GetTitleOffset()*3.);
-
-    SN1.h_map[key.c_str()]->SetMaximum(1.2*TMath::Max(SN1.h_map[key.c_str()]->GetMaximum(), SN2.h_map[key.c_str()]->GetMaximum()));
-
-    SN1.h_map[key.c_str()]->DrawCopy("HIST E1");
-    SN2.h_map[key.c_str()]->DrawCopy("SAME *HIST E1");
+    setTH1Ratio(hd_map[key.c_str()], SN1.h_map[key.c_str()], 2);
+    hd_map[key.c_str()]->GetXaxis()->SetNdivisions(210);
+    hd_map[key.c_str()]->Draw("HIST E1");
 
     pad2_p->cd();
+    setTH1Ratio(hr_map[key.c_str()], SN1.h_map[key.c_str()], 2);
     hr_map[key.c_str()]->SetMaximum(1.3);
     hr_map[key.c_str()]->SetMinimum(0.7);
-    hr_map[key.c_str()]->DrawCopy("P");
+    hr_map[key.c_str()]->SetMarkerSize (1.15);
+    hr_map[key.c_str()]->Draw("HIST P");
 
     pad3_p->cd();
-    hd_map[key.c_str()]->DrawCopy("HIST E1");
-    gPad->SetLogy();
+    
+    int lowBin = TMath::Min(SN1.h_map[key.c_str()]->FindFirstBinAbove(), SN2.h_map[key.c_str()]->FindFirstBinAbove())-1;
+    int highBin = TMath::Max(SN1.h_map[key.c_str()]->FindLastBinAbove(), SN2.h_map[key.c_str()]->FindLastBinAbove())+1;
+    float yMax = 1.2*TMath::Max(SN1.h_map[key.c_str()]->GetMaximum(), SN2.h_map[key.c_str()]->GetMaximum());
+
+    SN1.h_map[key.c_str()]->SetMaximum(yMax);
+    SN1.h_map[key.c_str()]->GetXaxis()->SetRange(lowBin,highBin);
+    SN2.h_map[key.c_str()]->SetMaximum(yMax);
+    SN2.h_map[key.c_str()]->GetXaxis()->SetRange(lowBin,highBin);
+    //SN2.h_map[key.c_str()]->SetMaximum(1.2*TMath::Max(SN1.h_map[key.c_str()]->GetMaximum(), SN2.h_map[key.c_str()]->GetMaximum()));
+
+    SN1.h_map[key.c_str()]->GetXaxis()->SetNdivisions(510);
+    setTH1Final(SN1.h_map[key.c_str()]);
+    SN2.h_map[key.c_str()]->GetXaxis()->SetNdivisions(510);
+    setTH1Final(SN2.h_map[key.c_str()]);
+
+    if(key == "EventNum"){ 
+      SN1.h_map[key.c_str()]->Draw("HIST P"); 
+      SN2.h_map[key.c_str()]->Draw("HIST P SAME"); 
+    }
+    else{ 
+      SN1.h_map[key.c_str()]->Draw("HIST E1"); 
+      SN2.h_map[key.c_str()]->Draw("HIST E1 SAME"); 
+    }
+
+    TLegend *leg = new TLegend();
+    setLegendPosition(leg,"NW",pad1_p,0.20,0.75,0,0,0);
+    setLegendFinal(leg);
+    leg->AddEntry(SN1.h_map[key.c_str()],"File 1","l");\
+    leg->AddEntry(SN2.h_map[key.c_str()],"File 2","l");
+    leg->Draw();
+
 
     std::string pdfStr = key + "_" + std::to_string(date->GetDate()) + ".pdf";
     canv_p->SaveAs(("pdfDir/" + pdfStr).c_str());
@@ -323,14 +366,128 @@ int plot_sim(const std::string inFileName1, // First input file
 
   fileTex << std::endl;
 
+  // First page of argument parameters
   fileTex << "\\begin{frame}" << std::endl;
-  fileTex << "\\frametitle{\\centerline{Sample Validation (" << date->GetYear() << "." << date->GetMonth() << "." << date->GetDay() << ")}}" << std::endl;
+  fileTex << "\\frametitle{\\centerline{MM Trigger Simulation Validation (" << date->GetYear() << "." << date->GetMonth() << "." << date->GetDay() << ")}}" << std::endl;
   fileTex << " \\begin{itemize}" << std::endl;
   fileTex << "  \\fontsize{8}{8}\\selectfont" << std::endl;
-  fileTex << "  \\item{" << inFile1TexStr << "}" << std::endl;
-  fileTex << "  \\item{" << inFile2TexStr << "}" << std::endl;
+  fileTex << "  \\item{" << "File 1: " << inFile1TexStr << "}" << std::endl;
+  fileTex << "  \\item{" << "File 2: " << inFile2TexStr << "}" << std::endl;
+  fileTex << "\\newline" << std::endl;
+  if(legacyFile1) fileTex << "Legacy mode for file 1 turned on. Don't trust file 1's column below." << std::endl;
+  if(legacyFile2) fileTex << "Legacy mode for file 2 turned on. Don't trust file 2's column below." << std::endl;
+  fileTex << "\\newline" << std::endl;
+  fileTex << "\\begin{table}[t]\\centering" << std::endl;
+  fileTex << "\\begin{tabular}{c|c|c}" << std::endl;
+  //fileTex << "\\hline" << std::endl;
+  fileTex << "Parameter & File 1 & File 2 \\\\" << std::endl;
+  fileTex << "\\hline" << std::endl;
+  fileTex << "N Events &" << SN1.NEvent << " & " << SN2.NEvent << "\\\\" << std::endl;
+  fileTex << "Background rate &" << SN1.bkgrate << " & " << SN2.bkgrate << "\\\\" << std::endl;
+  fileTex << "Chamber Type &" << chamber_names[SN1.chamber] << " & " << chamber_names[SN2.chamber] << "\\\\" << std::endl;
+  fileTex << "Size of x road in strips &" << SN1.m_xroad << " & " << SN2.m_xroad << "\\\\" << std::endl;
+  fileTex << "Number of x strips &" << SN1.m_NSTRIPS << " & " << SN2.m_NSTRIPS << "\\\\" << std::endl;
+  fileTex << "Algorithm collection window (in bc) &" << SN1.m_bcwind << " & " << SN2.m_bcwind << "\\\\" << std::endl;
+  fileTex << "Art time resolution &" << SN1.m_sig_art << " & " << SN2.m_sig_art << "\\\\" << std::endl;
+  fileTex << "Kill one plane randomly &" << (SN1.killran ? "true" : "false") << " & " << (SN2.killran ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Kill one X plane randomly &" << (SN1.killxran ? "true" : "false") << " & " << (SN2.killxran ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Kill one U or V plane randomly &" << (SN1.killuvran ? "true" : "false") << " & " << (SN2.killuvran ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "X Hit Threshold &" << SN1.m_xthr << " & " << SN2.m_xthr << "\\\\" << std::endl;
+  fileTex << "UV Hit Threshold &" << SN1.m_uvthr << " & " << SN2.m_uvthr << "\\\\" << std::endl;
+  fileTex << "TRandom Seed &" << SN1.seed << " & " << SN2.seed << "\\\\" << std::endl;
+  fileTex << "\\end{tabular}" << std::endl;
+  fileTex << "\\caption{Simulation parameters.}" << std::endl;
+  fileTex << "\\label{}" << std::endl;
+  fileTex << "\\end{table}" << std::endl;
   fileTex << " \\end{itemize}" << std::endl;
   fileTex << "\\end{frame}" << std::endl;
+
+  fileTex << std::endl;
+
+  // Second page of argument parameters
+  fileTex << "\\begin{frame}" << std::endl;
+  fileTex << "\\frametitle{\\centerline{MM Trigger Simulation Validation (" << date->GetYear() << "." << date->GetMonth() << "." << date->GetDay() << ")}}" << std::endl;
+  fileTex << " \\begin{itemize}" << std::endl;
+  fileTex << "  \\fontsize{8}{8}\\selectfont" << std::endl;
+  fileTex << "  \\item{" << "File 1: " << inFile1TexStr << "}" << std::endl;
+  fileTex << "  \\item{" << "File 2: " << inFile2TexStr << "}" << std::endl;
+  fileTex << "\\newline" << std::endl;
+  if(legacyFile1) fileTex << "Legacy mode for file 1 turned on. Don't trust file 1's column below." << std::endl;
+  if(legacyFile2) fileTex << "Legacy mode for file 2 turned on. Don't trust file 2's column below." << std::endl;  
+  fileTex << "\\newline" << std::endl;
+  fileTex << "\\begin{table}[t]\\centering" << std::endl;
+  fileTex << "\\begin{tabular}{c|c|c}" << std::endl;
+  //fileTex << "\\hline" << std::endl;
+  fileTex << "Parameter & File 1 & File 2 \\\\" << std::endl;
+  fileTex << "\\hline" << std::endl;
+  fileTex << "Generate Background &" << (SN1.bkgflag ? "true" : "false") << " & " << (SN2.bkgflag ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Plot Event Displays &" << (SN1.pltflag ? "true" : "false") << " & " << (SN2.pltflag ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "UVR Flag &" << (SN1.uvrflag ? "true" : "false") << " & " << (SN2.uvrflag ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Trap Flag &" << (SN1.trapflag ? "true" : "false") << " & " << (SN2.trapflag ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Ideal TP Flag &" << (SN1.ideal_tp ? "true" : "false") << " & " << (SN2.ideal_tp ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Ideal VMM Flag &" << (SN1.ideal_vmm ? "true" : "false") << " & " << (SN2.ideal_vmm ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Ideal ADDC Flag &" << (SN1.ideal_addc ? "true" : "false") << " & " << (SN2.ideal_addc ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Write Tree &" << (SN1.write_tree ? "true" : "false") << " & " << (SN2.write_tree ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Background Only &" << (SN1.bkgonly ? "true" : "false") << " & " << (SN2.bkgonly ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Smear ART Arrival Time &" << (SN1.smear_art ? "true" : "false") << " & " << (SN2.smear_art ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Use Custom ART Smear Fuction &" << (SN1.funcsmear_art ? "true" : "false") << " & " << (SN2.funcsmear_art ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "Legacy Mode &" << (SN1.legacy ? "true" : "false") << " & " << (SN2.legacy ? "true" : "false") << "\\\\" << std::endl;
+  fileTex << "\\end{tabular}" << std::endl;
+  fileTex << "\\hfill" << std::endl;
+  fileTex << "\\caption{Simulation parameters.}" << std::endl;
+  fileTex << "\\label{}" << std::endl;
+  fileTex << "\\end{table}" << std::endl;
+  fileTex << " \\end{itemize}" << std::endl;
+  fileTex << "\\end{frame}" << std::endl;
+
+  // Third page of argument parameters for MM efficiencies
+  
+  fileTex << "\\begin{frame}" << std::endl;
+  fileTex << "\\frametitle{\\centerline{MM Trigger Simulation Validation (" << date->GetYear() << "." << date->GetMonth() << "." << date->GetDay() << ")}}" << std::endl;
+  fileTex << " \\begin{itemize}" << std::endl;
+  fileTex << "  \\fontsize{8}{8}\\selectfont" << std::endl;
+  fileTex << "  \\item{" << "File 1: " << inFile1TexStr << "}" << std::endl;
+  fileTex << "  \\item{" << "File 2: " << inFile2TexStr << "}" << std::endl;
+  fileTex << "\\newline" << std::endl;
+  if(legacyFile1) fileTex << "Legacy mode for file 1 turned on. Don't trust file 1's column below." << std::endl;
+  if(legacyFile2) fileTex << "Legacy mode for file 2 turned on. Don't trust file 2's column below." << std::endl;  
+  fileTex << "\\newline" << std::endl;
+  
+  
+  if(!legacyFile1 && !legacyFile2 && SN1.mm_eff->size() == SN2.mm_eff->size()){
+    fileTex << "\\begin{table}[t]\\centering" << std::endl;
+    fileTex << "\\begin{tabular}{c|c|c}" << std::endl;
+    //fileTex << "\\hline" << std::endl;
+    fileTex << "Location & Efficiency File 1 & Efficiency File 2 \\\\" << std::endl;
+    fileTex << "\\hline" << std::endl;
+    for( int i = 0; i < SN1.mm_eff->size(); i++){
+      if(SN1.mm_eff->at(i) < 0 || SN1.mm_eff->at(i) > 1 || SN2.mm_eff->at(i) < 0 || SN2.mm_eff->at(i) > 1) break;
+      if(SN1.mm_eff->size() == 8){
+        fileTex << "Layer " << i << " & " << SN1.mm_eff->at(i) << " & " << SN2.mm_eff->at(i) << "\\\\" << std::endl;
+      }
+      else if(SN1.mm_eff->size() == 64){
+        fileTex << "Layer " << i/8 << ", PCB " << i % 8 << " & " << SN1.mm_eff->at(i) << " & " << SN2.mm_eff->at(i) << "\\\\" << std::endl;
+      }
+      else if(SN1.mm_eff->size() == 128){
+        std::string leftRight = "right";
+        if( i % 2 == 0) leftRight = "left";
+        fileTex << "Layer " << i/8.0 << ", PCB " << i % 8 << " " << leftRight << " & " << SN1.mm_eff->at(i) << " & " << SN2.mm_eff->at(i) << "\\\\" << std::endl;
+      }
+    }
+    fileTex << "\\end{tabular}" << std::endl;
+    fileTex << "\\hfill" << std::endl;
+    fileTex << "\\caption{Simulation parameters.}" << std::endl;
+    fileTex << "\\label{}" << std::endl;
+    fileTex << "\\end{table}" << std::endl;
+  }
+  else{
+    fileTex << "The two files have different length efficiency lists! Check what you are trying to compare." << std::endl;
+  }
+  fileTex << " \\end{itemize}" << std::endl;
+  fileTex << "\\end{frame}" << std::endl;
+
+  fileTex << std::endl;
+
 
   for(unsigned int i = 0; i < listOfPdf.size(); ++i){
     std::string varStr = listOfVar.at(i);
@@ -346,11 +503,14 @@ int plot_sim(const std::string inFileName1, // First input file
     fileTex << "\\begin{frame}" << std::endl;
     fileTex << "\\frametitle{\\centerline{" << newVarStr << "}}" << std::endl;
     fileTex << "\\begin{center}" << std::endl;
-    fileTex << "\\includegraphics[width=0.8\\textwidth]{" << listOfPdf.at(i) << "}" << std::endl;
+    fileTex << "\\includegraphics[width=\\textwidth]{" << listOfPdf.at(i) << "}" << std::endl;
     fileTex << "\\end{center}" << std::endl;
     fileTex << "\\begin{itemize}" << std::endl;
     fileTex << "\\fontsize{8}{8}\\selectfont" << std::endl;
-    fileTex << "\\item{" << newVarStr << "}" << std::endl;
+    fileTex << "\\item{" << "File 1" << ", Entries: " << SN1.h_map[listOfVar.at(i).c_str()]->GetEntries() << ", Mean: " << SN1.h_map[listOfVar.at(i).c_str()]->GetMean() << ", Std Dev: " << SN1.h_map[listOfVar.at(i).c_str()]->GetStdDev() << "}" << std::endl;
+    fileTex << "\\item{" << "File 2" << ", Entries: " << SN2.h_map[listOfVar.at(i).c_str()]->GetEntries() << ", Mean: " << SN2.h_map[listOfVar.at(i).c_str()]->GetMean() << ", Std Dev: " << SN2.h_map[listOfVar.at(i).c_str()]->GetStdDev() << "}" << std::endl;
+    fileTex << "\\item{" << "Difference by bin" << ", Entries: " << hd_map[listOfVar.at(i).c_str()]->GetEntries() << ", Mean: " << hd_map[listOfVar.at(i).c_str()]->GetMean() << ", Std Dev: " << hd_map[listOfVar.at(i).c_str()]->GetStdDev() << "}" << std::endl;
+    fileTex << "\\item{" << "Ratio by bin" << ", Entries: " << hr_map[listOfVar.at(i).c_str()]->GetEntries() << ", Mean: " << hr_map[listOfVar.at(i).c_str()]->GetMean() << ", Std Dev: " << hr_map[listOfVar.at(i).c_str()]->GetStdDev() << "  (Inifite bins set to 0)" << "}" << std::endl;
     fileTex << "\\end{itemize}" << std::endl;
     fileTex << "\\end{frame}" << std::endl;
   }
@@ -383,10 +543,7 @@ int plot_sim(const std::string inFileName1, // First input file
 int main(int argc, char*argv[]){
 
   int retVal = 0;
-  if(argc == 2) { 
-    std::cout<<"BAD INPUT NEED 2 FILES"<<std::endl;
-    retVal += -1; 
-  }
+  if(argc == 2) { retVal += plot_sim(argv[1]); }
   else if(argc == 3) { retVal += plot_sim(argv[1], argv[2]); }
 
   std::cout<<__LINE__<<std::endl;
