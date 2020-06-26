@@ -1,6 +1,6 @@
 /*
  * utilities related to TCanvas, TPad objects.
- * Thanks to Kaya Tatar from the ElectroWeak-Jet-Track-Analyses.
+ * Thanks to Kaya Tatar 
  */
 
 #include <TCanvas.h>
@@ -61,19 +61,6 @@ double getYNDC(TPad* pad, double yUser);
 void copyAxisTitle(TAxis* axis, TAxis* axisRef);
 
 void setCanvasTLatex(TCanvas* c, float px, float py, std::vector<std::string> lines, float pyOffset = 0.05);
-
-void setCanvas_InvMass(TCanvas* c, float px = 0.65, float py = 0.85,
-                       const char* collision = "CMS pp", const char* energy    = "#sqrt{s} = 5.02 TeV",
-                       const char* ptCut     = "p^{e}_{T} > 20 GeV/c", const char* etaCut = "|#eta^{e}| <1 .44",
-                       const char* extra = "");
-
-void setCanvas_InvMass_pp(TCanvas* c, float px = 0.65, float py = 0.85,
-                          const char* ptCut = "p^{e}_{T} > 20 GeV/c", const char* etaCut = "|#eta^{e}| < 1.44",
-                          const char* extra = "");
-
-void setCanvas_InvMass_PbPb(TCanvas* c, float px = 0.65, float py = 0.85,
-                            const char* ptCut = "p^{e}_{T} > 20 GeV/c", const char* etaCut = "|#eta^{e}| < 1.44",
-                            const char* extra = "");
 
 void setCanvasFinal(TCanvas* c, int logx, int logy, int logz)
 {
@@ -172,70 +159,6 @@ void divideCanvas(TCanvas* c, TPad* pads[], int rows, int columns, float leftMar
             else pads[ij]->SetLeftMargin(xMargin/2 / padWidth[j]);
             if (j == columns - 1) pads[ij]->SetRightMargin(rightMargin / padWidth[j]);
             else pads[ij]->SetRightMargin(xMargin/2 / padWidth[j]);
-            
-            pads[ij]->Draw();
-            pads[ij]->cd();
-            pads[ij]->SetNumber(ij+1);
-            
-            setPadFinal(pads[ij]);
-        }
-    }
-}
-
-/*
- * Deprecated, replaced by divideCanvas().
- */
-void divideCanvas2017(TCanvas* c, TPad* pads[], int rows, int columns, float leftMargin, float rightMargin, float bottomMargin, float topMargin, float xMargin, float yMargin, float yMinOffset)
-{
-    c->Clear();
-    
-    double normPadWidth = calcNormCanvasWidth(1, 0.8, leftMargin, rightMargin, xMargin);
-    double normPadHeight = calcNormCanvasHeight(1, 0.8, bottomMargin, topMargin, yMargin);
-    
-    float x_min[columns], x_max[columns];
-    x_min[0] = 0;
-    x_max[0] = normPadWidth + leftMargin - xMargin/2;   // left margin is inside the width of leftmost panel
-    for (int i = 1; i < columns; ++i) {
-        x_min[i] = x_max[i-1];
-        x_max[i] = x_min[i] + normPadWidth;
-    }
-    x_max[columns-1] += rightMargin - xMargin/2;
-    
-    float y_min[rows], y_max[rows];
-    y_min[rows-1] = yMinOffset;
-    y_max[rows-1] = normPadHeight + bottomMargin - yMargin/2;  // bottom margin is inside the height of bottom panel
-    for (int i = rows - 2; i >= 0; --i) {
-        y_min[i] = y_max[i+1] + yMinOffset;
-        y_max[i] = y_min[i] + normPadHeight;
-    }
-    y_max[0] += topMargin - yMargin/2;
-    
-    double normCanvasWidth = x_max[columns-1];
-    double normCanvasHeight = y_max[0];
-    // normalize the coordinates such that x_max[columns-1] = 1 and y_max[0] = 1
-    for (int i = 0; i < columns; ++i) {
-        x_min[i] /= normCanvasWidth;
-        x_max[i] /= normCanvasWidth;
-    }
-    for (int i = 0; i < rows; ++i) {
-        y_min[i] /= normCanvasHeight;
-        y_max[i] /= normCanvasHeight;
-    }
-    
-    for (int i=0; i<rows; i++) {
-        for (int j=0; j<columns; j++) {
-            c->cd();
-            int ij = i*columns+j;
-            pads[ij] = new TPad(Form("pad_%d_%d", i, j), Form("pad_%d_%d", i, j), x_min[j], y_min[i], x_max[j], y_max[i]);
-            
-            if (i == 0) pads[ij]->SetTopMargin(topMargin);
-            else pads[ij]->SetTopMargin(yMargin/2);
-            if (i == rows - 1) pads[ij]->SetBottomMargin(bottomMargin);
-            else pads[ij]->SetBottomMargin(yMargin/2);
-            if (j == 0) pads[ij]->SetLeftMargin(leftMargin);
-            else pads[ij]->SetLeftMargin(xMargin/2);
-            if (j == columns - 1) pads[ij]->SetRightMargin(rightMargin);
-            else pads[ij]->SetRightMargin(xMargin/2);
             
             pads[ij]->Draw();
             pads[ij]->cd();
@@ -469,20 +392,6 @@ std::vector<std::pair<float, float>> calcTextCoordinates(std::vector<std::string
     return coordinatesNDC;
 }
 
-/*
-void drawTextLines(TLatex* latex, TPad* pad, std::vector<std::string> lines, std::string position, double offsetX, double offsetY)
-{
-    std::vector<std::pair<float,float>> textCoordinates = calcTextCoordinates(lines, position, (TCanvas*)pad, offsetX, offsetY);
-    int nLines = lines.size();
-    
-    for (int i = 0; i<nLines; ++i){
-        float x = textCoordinates.at(i).first;
-        float y = textCoordinates.at(i).second;
-        if (lines.at(i) != CONFIGPARSER::nullInput.c_str())
-            latex->DrawLatexNDC(x, y, lines.at(i).c_str());
-    }
-}
-*/
 
 /*
  * return true if the pad contains an instance of the given class.
@@ -707,61 +616,6 @@ void setCanvasTLatex(TCanvas* c, float px, float py, std::vector<std::string> li
     }
 }
 
-void setCanvas_InvMass(TCanvas* c, float px, float py, const char* collision, const char* energy,
-                       const char* ptCut, const char* etaCut, const char* extra)
-{
-    c->cd();
-    
-    float pyNew = py;
-    TLatex *latexCMS = new TLatex(px,pyNew, collision);
-    latexCMS->SetTextFont(43);
-    latexCMS->SetTextSize(20);
-    latexCMS->SetNDC();
-    latexCMS->Draw();
-    
-    pyNew = pyNew-0.05;
-    TLatex *latexEnergy = new TLatex(px, pyNew, energy);
-    latexEnergy->SetTextFont(43);
-    latexEnergy->SetTextSize(20);
-    latexEnergy->SetNDC();
-    latexEnergy->Draw();
-    
-    pyNew = pyNew-0.05;
-    TLatex *latexPt = new TLatex(px, pyNew, ptCut);
-    latexPt->SetTextFont(43);
-    latexPt->SetTextSize(20);
-    latexPt->SetNDC();
-    latexPt->Draw();
-    
-    pyNew = pyNew-0.06;
-    TLatex *latexEta = new TLatex(px, pyNew, etaCut);
-    latexEta->SetTextFont(43);
-    latexEta->SetTextSize(20);
-    latexEta->SetNDC();
-    latexEta->Draw();
-    
-    std::string str = extra;
-    if (str != "")
-    {
-        pyNew = pyNew-0.05;
-        TLatex *latexExtra = new TLatex(px, pyNew, extra);
-        latexExtra->SetTextFont(43);
-        latexExtra->SetTextSize(20);
-        latexExtra->SetNDC();
-        latexExtra->Draw();
-    }
-}
-
-void setCanvas_InvMass_pp(TCanvas* c, float px, float py, const char* ptCut, const char* etaCut, const char* extra)
-{
-    setCanvas_InvMass(c, px, py, "CMS preliminary pp", "#sqrt{s} = 5.02 TeV", ptCut, etaCut, extra);
-}
-
-void setCanvas_InvMass_PbPb(TCanvas* c, float px, float py, const char* ptCut, const char* etaCut, const char* extra)
-{
-    setCanvas_InvMass(c, px, py, "CMS preliminary PbPb", "#sqrt{s_{NN}} = 5.02 TeV", ptCut, etaCut, extra);
-}
-
 void easyLeg( TLegend *legend=0 , const char* head="")
 {
     legend->SetBorderSize(0);
@@ -773,23 +627,6 @@ void easyLeg( TLegend *legend=0 , const char* head="")
     legend->SetLineWidth(1);
     legend->SetFillColor(kWhite);   // kWhite = 0
     legend->SetFillStyle(0);  // kFEmpty = 0
-}
-
-/*
- * h1 is assumed to be the histogram for opposite charge.
- * h2 is assumed to be the histogram for same charge.
- */
-void setCanvas_InvMass_Histo2Legend(TCanvas* c, TH1* h1, TH1* h2)
-{
-    c->cd();
-    
-    TLegend *legend = new TLegend(0.1,0.75,0.4,0.9,"","brNDC");
-    easyLeg(legend,"");
-    
-    legend->AddEntry(h1, "opposite charge", "p");
-    legend->AddEntry(h2, "same charge", "p");
-    
-    legend->Draw();
 }
 
 /*
