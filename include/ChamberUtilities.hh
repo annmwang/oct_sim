@@ -24,25 +24,6 @@ Commented / Modified by: Anthony Badea (June 2020)
 #include <GeoOctuplet.hh>
 #include <SimConstants.hh>
 
-// Purpose: 
-struct slope_t {
-    int count;
-    int iroad;
-    int iroadu;
-    int iroadv;
-    int imuonhits;
-    int uvbkg;
-    int xbkg;
-    int xmuon;
-    int age; //WRT first muon hit BC
-    double mxl;
-    double xavg;
-    double yavg;
-    double xcenter;
-    double ycenter;
-    vector<Hit> slopehits;
-};
-
 // Input:
 // Output: 
 bool compare_age(Hit* a, Hit* b){
@@ -53,12 +34,6 @@ bool compare_age(Hit* a, Hit* b){
 // Output: 
 bool compare_channel(Hit* a, Hit* b){
     return (a->Channel() < b->Channel());
-}
-
-// Input:
-// Output: 
-bool compare_slope(slope_t a, slope_t b){
-    return (a.iroad < b.iroad);
 }
 
 // Input:

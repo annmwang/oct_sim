@@ -28,6 +28,31 @@ Commented / Modified by: Anthony Badea (June 2020)
 #include <GeoOctuplet.hh>
 #include <Road.hh>
 
+// Purpose: 
+struct slope_t {
+    int count;
+    int iroad;
+    int iroadu;
+    int iroadv;
+    int imuonhits;
+    int uvbkg;
+    int xbkg;
+    int xmuon;
+    int age; //WRT first muon hit BC
+    double mxl;
+    double xavg;
+    double yavg;
+    double xcenter;
+    double ycenter;
+    vector<Hit> slopehits;
+};
+
+// Input:
+// Output: 
+bool compare_slope(slope_t a, slope_t b){
+    return (a.iroad < b.iroad);
+}
+
 // Input:
 // Output: 
 tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<Road*> roads, bool saveHits, bool ideal_vmm, bool ideal_addc, bool ideal_tp, int evt){
