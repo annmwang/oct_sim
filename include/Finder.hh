@@ -1,10 +1,7 @@
 /************** 
-
 SIMULATION FINDER FUNCTION
-
 Original code by: Ann Wang and Alexander Tuna
 Commented / Modified by: Anthony Badea (June 2020)
-
 **************/
 
 #ifndef Finder_HH
@@ -22,17 +19,14 @@ Commented / Modified by: Anthony Badea (June 2020)
 #include <cmath>
 #include <chrono>
 #include <time.h>
-
 // ROOT include
 #include <TH1F.h>
 #include <TRandom3.h>
 #include <TF1.h>
-
 // Header includes
 #include <Hit.hh>
 #include <GeoOctuplet.hh>
 #include <Road.hh>
-
 
 // Input:
 // Output: 
@@ -40,7 +34,6 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
 
   // applies the MMTP finder to a series of hits and roads
   // returns slope structs for roads which found a coincidence and have at least 1 real muon hit
-
   int ntrigs = 0;
   int bc_start = 999999;
   int bc_end = -1;
@@ -152,7 +145,7 @@ tuple<int, vector < slope_t> > finder(vector<Hit*> hits, int mu_firstbc, vector<
 
       //if (roads[i]->Coincidence(bc_wind) && bc == (mu_firstbc - 1)){
       if (roads[i]->Coincidence(bc_wind) && bc >= (mu_firstbc - 1)){
-	//if (roads[i]->Coincidence(bc_wind)){
+      //if (roads[i]->Coincidence(bc_wind)){
         if (db){
           cout << "---------------------------" << endl;
           cout << "FOUND COINCIDENCE @ BC " << bc << endl;

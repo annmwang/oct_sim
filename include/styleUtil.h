@@ -102,8 +102,6 @@ void divideCanvas(TCanvas* c, int rows, int columns, float leftMargin, float rig
     divideCanvas(c, pads, rows, columns, leftMargin, rightMargin, bottomMargin, topMargin, xMargin, yMargin, frameWidth, frameHeight, yMinOffset);
 }
 
-
-
 void divideCanvas(TCanvas* c, TPad* pads[], int rows, int columns, float leftMargin, float rightMargin, float bottomMargin, float topMargin, float xMargin, float yMargin, float frameWidth, float frameHeight, float yMinOffset)
 {
     

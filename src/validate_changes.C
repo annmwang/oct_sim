@@ -1,8 +1,12 @@
+/*
+Validation code to produce plots of variables within the trees. Compares to input files and automatically produces slides.
+Author: Anthony Badea (June 2020)
+*/
+
 // c and c++ dependencies
 #include <iostream>
 #include <numeric>
 #include <fstream>
-
 // root dependencies
 #include <TFile.h>
 #include <TH1D.h>
@@ -12,7 +16,6 @@
 #include <TPad.h>
 #include <TLegend.h>
 #include <TGaxis.h>
-
 // local dependencies 
 #include "SimNtupleData.hh"
 #include "VectorDict.cxx"
@@ -20,14 +23,15 @@
 #include "styleUtil.h"
 #include "vanGoghPalette.h"
 
-int plot_sim(const std::string inFileName1, // First input file
-             const std::string inFileName2 = "", // Second input file
-             bool legacyFile1 = false, // Comparison to legacy simulation file
-             bool legacyFile2 = false, // Comparison to legacy simulation file
-			       const std::string outFileName = "outFileName.root", // Output file
-			       const std::string treeName = "gingko", // Tree name for simulation data
-             const std::string treeArgsName = "sim_args" // Tree name for simulation args
-           )
+int plot_sim(
+  std::string inFileName1, // First input file
+  std::string inFileName2 = "", // Second input file
+  bool legacyFile1 = false, // Comparison to legacy simulation file
+  bool legacyFile2 = false, // Comparison to legacy simulation file
+  const std::string outFileName = "outFileName.root", // Output file
+  const std::string treeName = "gingko", // Tree name for simulation data
+  const std::string treeArgsName = "sim_args" // Tree name for simulation args
+)
 {
   // ROOT Global settings
   TH1::SetDefaultSumw2();
@@ -39,7 +43,7 @@ int plot_sim(const std::string inFileName1, // First input file
   SN1.SetAddressReadData(t1);
   SN1.InitializeHistsData_ALL();
  
-  if(inFileName2 == "") inFileName2 = inFileName1;
+  if(inFileName2 == ""){inFileName2 = inFileName1;}
   TFile *inFile2 = new TFile(inFileName2.c_str(), "READ");
   TTree *t2 = (TTree*)inFile2->Get(treeName.c_str());
   TTree *t2_args = (TTree*)inFile2->Get(treeArgsName.c_str());
