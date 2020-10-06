@@ -287,14 +287,13 @@ int main(int argc, char* argv[]) {
                 ran, 
                 oct_hitmask,
                 legacy);
-
+    
     vector<int> art_bc(NPLANES, -1.);
     vector<Hit*> hits;
     int n_u = 0;
     int n_v = 0;
     int n_x1 = 0;
     int n_x2 = 0;
-
     // Function location: SimUtilities.hh
     std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits(NPLANES, 
                                                            NPCB_PER_PLANE, 
@@ -317,6 +316,10 @@ int main(int argc, char* argv[]) {
 
     if (db){
       std::cout << "N muonhits: " << hits.size() << std::endl;
+      std::cout << "N X1 hits: "  << n_x1 << std::endl;
+      std::cout << "N U hits: "   << n_u << std::endl;
+      std::cout << "N V hits: "   << n_v << std::endl;
+      std::cout << "N X2 hits: "  << n_x2 << std::endl;
       for (unsigned int j = 0; j < hits.size(); j++){
         printf("Muon hit (board, BC, strip): (%d,%d,%4.4f)\n", hits[j]->MMFE8Index(),hits[j]->Age(),hits[j]->Channel());
       }

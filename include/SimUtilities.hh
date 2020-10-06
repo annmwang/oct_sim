@@ -33,7 +33,7 @@ Commented / Modified by: Anthony Badea (June 2020)
 #include <Hit.hh>
 #include <GeoOctuplet.hh>
 #include <Road.hh>
-
+#include <SimConstants.hh>
 
 
 /******************************************************** 64 PCB Mode ********************************************************/
@@ -183,7 +183,6 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_6
 																			  std::vector<int> oct_hitmask // detector hit vector
 																			  )
 {
-
     vector<int> art_bc(NPLANES, -1.);
     
     vector<Hit*> hits;
@@ -192,7 +191,7 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_6
     int n_v = 0;
     int n_x1 = 0;
     int n_x2 = 0;
-    
+  
     double art_time;
     
     double strip, strip_smear;
@@ -201,48 +200,43 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_6
 
     // locations in oct_hitmask of the various planes
     // combine the first two x planes into x1
-    int x1PCBs = 1*NPCB_PER_PLANE;
-    int u1PCBs = 2*NPCB_PER_PLANE;
- 	int v1PCBs = 3*NPCB_PER_PLANE;
-    int u2PCBs = 4*NPCB_PER_PLANE;
-    int v2PCBs = 5*NPCB_PER_PLANE;
+    int x1PCBs = 2*NPCB_PER_PLANE;
+    int u1PCBs = 3*NPCB_PER_PLANE;
+ 	  int v1PCBs = 4*NPCB_PER_PLANE;
+    int u2PCBs = 5*NPCB_PER_PLANE;
+    int v2PCBs = 6*NPCB_PER_PLANE;
     // combine the last two x planes into x2
-    int x2PCBs = 6*NPCB_PER_PLANE;
-
+    int x2PCBs = 7*NPCB_PER_PLANE;
     // Number of PCBs on the entire chamber
-	int nPCB = NPCB_PER_PLANE*NPLANES;
+	  int nPCB = NPCB_PER_PLANE*NPLANES;
 
     for ( int j = 0; j < nPCB; j++){
     	// Determine the plane index
-      	int j_plane = (int) round(j/NPLANES);
-
+      int j_plane = (int) round(j/NPCB_PER_PLANE);
   		if (oct_hitmask[j] == 1){
   			// Increment the number of hits per plane
-	        if (j <= x1PCBs)
-	          	n_x1++;
-	        else if (j >= u1PCBs && j < v1PCBs)
-	          	n_u++;
-	      	else if (j >= v1PCBs && j < u2PCBs)
+	        if (j < x1PCBs)
+	        	n_x1++;
+	        else if (j >= x1PCBs && j < u1PCBs)
+	         	n_u++;
+	      	else if (j >= u1PCBs && j < v1PCBs)
 	      	 	n_v++;
-	      	else if (j >= u2PCBs && j < v2PCBs)
+	      	else if (j >= v1PCBs && j < u2PCBs)
 	      		n_u++;
-	      	else if (j >= v2PCBs && j < x2PCBs)
+	      	else if (j >= u2PCBs && j < v2PCBs)
 	      		n_v++;
-	        else if (j >= x2PCBs)
-	          	n_x2++;
-
+	        else if (j >= v2PCBs)
+	          n_x2++;
 	       	// Randomly calculate an art time based on the ART resolution in ns
-     		art_time = ran->Gaus(400.,(double)(sig_art));
+     		 art_time = ran->Gaus(400.,(double)(sig_art));
 
      		// There is a bunch crossing every 25 ns. Calculate where in that time the art happened
 	      	art_bc[j_plane] = (int)floor(art_time/bc_length);
-	      	
+	      
 	      	// Prepare for a new hit
 	      	Hit* newhit = nullptr;
-
 	      	// Extracts the channel of the entire layer NOT the PCB
 	      	strip = GEOMETRY->Get(j_plane).channel_from_pos(xpos[j_plane],ypos[j_plane]);
-
 	      	// Smear the art strip position
 	      	// Excerpt from: https://cds.cern.ch/record/2302523/files/ATL-COM-MUON-2018-003.pdf?
 	      	// The spatial position of the muon hit is smeared with a gaussian with a σ of 1 strip as measured with 
@@ -257,19 +251,17 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits_6
 	      	else{
 	      	  strip_smear = strip;
 	      	}
-
 	      	// sanity check
 	      	if (j <= x1PCBs || j >= x2PCBs){
 	      		h_xres_strip->Fill(xpos[j_plane] - (GEOMETRY->Get(j_plane).Origin().X() + GEOMETRY->Get(j_plane).LocalXatYbegin(strip_smear)));
 	      	}
-
 	      	// Create a new hit and push it to the ongoing list
 	     	newhit = new Hit(j_plane, art_bc[j_plane], strip_smear, false, *GEOMETRY);
 	     	if (!bkgonly)
 				hits.push_back(newhit);
       	}
     }
-
+  
     return std::make_tuple(art_bc, hits, n_x1, n_u, n_v, n_x2);
 }
 
@@ -413,8 +405,8 @@ std::tuple< std::vector<int>, std::vector<Hit*>, int, int, int, int > get_hits(i
     	printf("********************* 64 PCB MODE TURNED ON *********************\n");
     	printf("*****************************************************************\n");*/
 	    std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits_64PCBs(NPLANES, 
-	    															  NPCB_PER_PLANE,
-                                                       				  GEOMETRY, 
+	    															                          NPCB_PER_PLANE,
+                                                       			  GEOMETRY, 
 				                                                      h_xres_strip, 
 				                                                      ran, 
 				                                                      sig_art,

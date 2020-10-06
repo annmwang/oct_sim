@@ -300,22 +300,48 @@ double predicted_rate(int strip, string chamber) {
 // Output:
 
 vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff, bool legacy){
+
+    // Hard code in x and y positions based on muon index
+    double X = (xhigh-xlow)/8.0; // xhigh, xlow, yhigh, ylow all set in ChamberUtilities.hh and read in from SimConstants.hh
+    double Y = (yhigh-ylow)/2.0;
+    double xPCBs[8];
+    double yPCBs[2] = {0, Y};
+    for (int i = 0; i < 8; i++){
+      xPCBs[i] = X*i;
+    }
+
   //gives detector response to muon, returns list of which planes registered hit
-  
   int n_mm = 0;
   vector<int> oct_hitmask(NPLANES*NPCB_PER_PLANE,0);
   for ( int j=0; j < NPLANES*NPCB_PER_PLANE; j++){
+
     // For legacy support explicitly set the other oct hit values to -999
     if( legacy && j >= NPLANES){
       oct_hitmask[j] = 0;
       break;
     }
-    int RAND = ran->Uniform(0.,1.);
+
+    // Check if muon generated on this PCB
+    // Determine the PCB x and y position based on which PCB on the plane it is 
+    int j_plane = (int) round(j/NPCB_PER_PLANE);
+    int j_PCB = j % NPCB_PER_PLANE;
+    int x_PCB = j_PCB / 2; // should be 0 - 7
+    int y_PCB = j_PCB % 2; // should be 0 or 1
+    double pcbX_low = xPCBs[x_PCB];
+    double pcbX_high = pcbX_low + X;
+    double pcbY_low = yPCBs[y_PCB];
+    double pcbY_high = pcbY_low + Y;
+    if ( pcbX_low > xpos[j_plane] || xpos[j_plane] > pcbX_high ) continue;
+    if ( pcbY_low > ypos[j_plane] || ypos[j_plane] > pcbY_high ) continue;
+    
+    // Determine if hit is generated based on efficiency
+    float RAND = ran->Uniform(0.,1.);
     if (RAND < mm_eff[j]){
       oct_hitmask[j] = 1;
       n_mm++;
     }
   }
+
   return oct_hitmask;
 }
 

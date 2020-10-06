@@ -16,7 +16,7 @@ TF1 *cosmic_dist = new TF1("cosmic_dist", "cos(x)*cos(x)", -0.3, 0.3);
 bool db = false; // debug output flag
 
 int NPLANES = 8;
-int NPCB_PER_PLANE = 8;
+int NPCB_PER_PLANE = 16;
 int NSTRIPS;
 int ADDC_BUFFER = 8;
 double xlow, xhigh, ylow, yhigh; // chamber dimensions
