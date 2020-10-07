@@ -30,6 +30,9 @@ def main():
         dirname = "batch-%s" % (now)
         topdir  = "/Users/anthonybadea/Documents/ATLAS/oct_sim/work" if not ops.NET3 else "/gpfs3/harvard/oct_sim"
         ops.o   = os.path.join(topdir, dirname)
+    else:
+        dirname = "batch-%s" % (now)
+        ops.o   = os.path.join(ops.o, dirname)
 
     # config dict steers everything
     config = {}
