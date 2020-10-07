@@ -13,7 +13,7 @@ Commented / Modified by: Anthony Badea (June 2020)
 TRandom3 *ran = new TRandom3(time(NULL));
 TF1 *cosmic_dist = new TF1("cosmic_dist", "cos(x)*cos(x)", -0.3, 0.3);
 
-bool db = false; // debug output flag
+bool db = true; // debug output flag
 
 int NPLANES = 8;
 int NPCB_PER_PLANE = 16;
@@ -74,8 +74,8 @@ int angcos  = 0; // determines which distribution the muon track x,y is drawn fr
 string histograms = "histograms"; // directory for output histograms
 
 // coincidence params
-int m_xthr = 2; // required total number of hits on all x channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
-int m_uvthr = 2; // required total number of hits on all u and v channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+int m_xthr = 3; // required total number of hits on all x channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
+int m_uvthr = 3; // required total number of hits on all u and v channels combined required for a trigger. Used in create_roads function which uses Road.hh in include folder
 
 bool bkgflag = false; // decides if background should be generated
 bool pltflag = false; // decides if event displays should be plotted
