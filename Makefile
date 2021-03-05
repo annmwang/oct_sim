@@ -2,41 +2,49 @@ ROOTCFLAGS    = $(shell root-config --cflags)
 ROOTGLIBS     = $(shell root-config --glibs)
 
 CXX            = g++
-CXXFLAGS       = -fPIC -Wall -O3 -g
+CXXFLAGS       = -fPIC -Wall -O3 -g -std=c++11 -Wc++17-extensions 
 CXXFLAGS       += $(filter-out -stdlib=libc++ -pthread , $(ROOTCFLAGS))
 GLIBS          = $(filter-out -stdlib=libc++ -pthread , $(ROOTGLIBS))
+RPATH 		   = -rpath /Users/anthonybadea/builddir/lib
 
 INCLUDEDIR       = ./include/
+INCLUDEDIR		 = $(PWD)/include/
 SRCDIR           = ./src/
 CXX             += -I$(INCLUDEDIR) -I.
 OUTOBJ	         = ./obj/
+BINDIR			 = ./bin/
 
 CC_FILES := $(wildcard src/*.cc)
 HH_FILES := $(wildcard include/*.hh)
 OBJ_FILES := $(addprefix $(OUTOBJ),$(notdir $(CC_FILES:.cc=.o)))
 DICT_FILES := $(wildcard include/*.pcm)
 
-all: VectorDict.cxx sim testGBT sim_PCBEff_Modular validate_changes
+MKDIR_BIN=mkdir -p $(PWD)/bin
+
+all: mkdirBin VectorDict sim testGBT sim_PCBEff_Modular validate_changes
+
+mkdirBin:
+	$(MKDIR_BIN)
 
 VectorDict: $(INCLUDEDIR)VectorDict.hh
-	rootcint -f VectorDict.cxx -c $(CXXFLAGS) -p $ $<
-	touch VectorDict.cxx
+	rootcint -f $(INCLUDEDIR)VectorDict.cxx -c $(CXXFLAGS) -p $ $<
+	touch $(INCLUDEDIR)VectorDict.cxx
 
 sim:  $(SRCDIR)sim.C $(OBJ_FILES) $(HH_FILES) $(DICT_FILES)
-	$(CXX) $(CXXFLAGS) -o sim $ $< $(GLIBS) 
-	touch sim
+	$(CXX) $(CXXFLAGS) $(RPATH) -o $(BINDIR)sim $ $< $(GLIBS) 
+	touch $(BINDIR)sim
 
 sim_PCBEff_Modular:  $(SRCDIR)sim_PCBEff_Modular.C $(OBJ_FILES) $(HH_FILES) $(DICT_FILES)
-	$(CXX) $(CXXFLAGS) -o sim_PCBEff_Modular $ $< $(GLIBS) 
-	touch sim_PCBEff_Modular
+	$(CXX) $(CXXFLAGS) $(RPATH) -o $(BINDIR)sim_PCBEff_Modular $ $< $(GLIBS) 
+	touch $(BINDIR)sim_PCBEff_Modular
 
 validate_changes:  $(SRCDIR)validate_changes.C $(OBJ_FILES) $(HH_FILES) $(DICT_FILES)
-	$(CXX) $(CXXFLAGS) -o validate_changes $ $< $(GLIBS) 
-	touch validate_changes
+	$(CXX) $(CXXFLAGS) $(RPATH) -o $(BINDIR)validate_changes $ $< $(GLIBS) 
+	touch $(BINDIR)validate_changes
 
 testGBT:  $(SRCDIR)testGBT.C $(OBJ_FILES) $(HH_FILES) 
-	$(CXX) $(CXXFLAGS) -o testGBT $ $< $(GLIBS) 
-	touch testGBT
+	$(CXX) $(CXXFLAGS) $(RPATH) -o $(BINDIR)testGBT $ $< $(GLIBS) 
+	touch $(BINDIR)testGBT
 
 $(OUTOBJ)%.o: src/%.cc include/%.hh
 	$(CXX) $(CXXFLAGS) -c $< -o $@
