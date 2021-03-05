@@ -49,7 +49,8 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
 
     if (chamber == "small"){
         if (m_nstrips == -1){
-            NSTRIPS = 8800; // has to be multiple of x road
+            // has to be multiple of x road
+            NSTRIPS = 8800;
         }
         else {
             NSTRIPS = m_nstrips;
@@ -61,7 +62,8 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
     }
     else if (chamber == "large"){
         if (m_nstrips == -1){
-            NSTRIPS = 8800; // has to be multiple of x road
+            // has to be multiple of x road
+            NSTRIPS = 8800; 
         }
         else {
             NSTRIPS = m_nstrips;
@@ -73,7 +75,8 @@ void set_chamber(string chamber, int m_wind, int m_sig_art, int m_xroad, bool uv
     }
     else if (chamber == "oct"){
         if (m_nstrips == -1){
-            NSTRIPS = 512; // has to be multiple of x road
+            // has to be multiple of x road
+            NSTRIPS = 512; 
         }
         else {
             NSTRIPS = m_nstrips;
@@ -248,7 +251,7 @@ double predicted_rate(int strip, string chamber) {
 
 // Input:
 // Output:
-vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<double> & zpos, vector<double> & mm_eff, bool legacy){
+vector<int> oct_response(vector<double> & mm_eff, bool legacy){
     //gives detector response to muon, returns list of which planes registered hit
     
     int n_mm = 0;
@@ -259,7 +262,7 @@ vector<int> oct_response(vector<double> & xpos, vector<double> & ypos, vector<do
             oct_hitmask[j] = 0;
             break;
         }
-        int RAND = ran->Uniform(0.,1.);
+        double RAND = ran->Uniform(0.,1.);
         if (RAND < mm_eff[j]){
             oct_hitmask[j] = 1;
             n_mm++;
