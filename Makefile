@@ -14,6 +14,11 @@ CXX             += -I$(INCLUDEDIR) -I.
 OUTOBJ	         = ./obj/
 BINDIR			 = ./bin/
 
+BB5              = ../bb5_analysis
+BB5_INCLUDEDIR   = $(BB5)/include
+CXX             += -I$(BB5) -I.
+CXX             += -I$(BB5_INCLUDEDIR) -I.
+
 CC_FILES := $(wildcard src/*.cc)
 HH_FILES := $(wildcard include/*.hh)
 OBJ_FILES := $(addprefix $(OUTOBJ),$(notdir $(CC_FILES:.cc=.o)))
@@ -21,7 +26,7 @@ DICT_FILES := $(wildcard include/*.pcm)
 
 MKDIR_BIN=mkdir -p $(PWD)/bin
 
-all: mkdirBin VectorDict sim testGBT sim_PCBEff_Modular validate_changes
+all: mkdirBin VectorDict sim testGBT sim_PCBEff_Modular validate_changes tpcosmics
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -45,6 +50,10 @@ validate_changes:  $(SRCDIR)validate_changes.C $(OBJ_FILES) $(HH_FILES) $(DICT_F
 testGBT:  $(SRCDIR)testGBT.C $(OBJ_FILES) $(HH_FILES) 
 	$(CXX) $(CXXFLAGS) $(RPATH) -o $(BINDIR)testGBT $ $< $(GLIBS) 
 	touch $(BINDIR)testGBT
+
+tpcosmics:  $(SRCDIR)tpcosmics.C $(OBJ_FILES) $(HH_FILES) $(DICT_FILES)
+	$(CXX) $(CXXFLAGS) $(RPATH) -o $(BINDIR)tpcosmics $ $< $(GLIBS) 
+	touch $(BINDIR)tpcosmics
 
 $(OUTOBJ)%.o: src/%.cc include/%.hh
 	$(CXX) $(CXXFLAGS) -c $< -o $@
