@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     int good_params = check_good_params();
     if (!good_params) return 0;
 
-    // Check that the chamber is prepared for simulaiton
+    // Check that the chamber is prepared for simulation
     set_chamber( string(chamberType), m_bcwind, m_sig_art, m_xroad, uvrflag, trapflag, m_NSTRIPS);
     int good_chamber = check_good_chamber();
     if(!good_chamber) return 0;
@@ -168,11 +168,18 @@ int main(int argc, char* argv[]) {
     // ######################### ########################### ######################### //
     // ######################### ########################### ######################### //
 
-    // ######################### ########################### ######################### //
-    // ######################### START OF SIMULATION PROCESS ######################### //
+    // ###################################### ###################### ##################################### //
+    // ###################################### SETUP SIMULATION ROADS ##################################### //
 
     vector<Road*> m_roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr, string(chamberType), trapflag);
 
+    // ######################### ###################### ######################## //
+    // ######################### ###################### ######################## //
+
+    // ######################### ########################### ######################### //
+    // ######################### START OF SIMULATION PROCESS ######################### //
+
+    
     time_t timer = time(NULL);
     time_t curr_time;
     for ( int i = 0; i < nevents; i++) {
@@ -265,15 +272,9 @@ int main(int argc, char* argv[]) {
         // Legacy mode: 
 
         // Function location: ChamberUtilities.hh
-        vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff, legacy);
-        oct_hitmask = kill_random(killran, 
-                                killxran, 
-                                killuvran, 
-                                NPLANES, 
-                                NPCB_PER_PLANE, 
-                                ran, 
-                                oct_hitmask,
-                                legacy);
+        // vector<int> oct_hitmask = oct_response(xpos, ypos, zpos, mm_eff, legacy);
+        vector<int> oct_hitmask = oct_response(mm_eff, legacy);
+        oct_hitmask = kill_random(killran, killxran, killuvran, NPLANES, NPCB_PER_PLANE, ran, oct_hitmask, legacy);
 
         vector<int> art_bc(NPLANES, -1.);
         vector<Hit*> hits;
@@ -283,22 +284,7 @@ int main(int argc, char* argv[]) {
         int n_x2 = 0;
 
         // Function location: SimUtilities.hh
-        std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits(NPLANES, 
-                                                                                                                     NPCB_PER_PLANE, 
-                                                                                                                     GEOMETRY, 
-                                                                                                                     hists["h_xres_strip"], 
-                                                                                                                     ran, 
-                                                                                                                     sig_art,
-                                                                                                                     m_sig_art_x,
-                                                                                                                     bc_length,
-                                                                                                                     xpos,
-                                                                                                                     ypos,
-                                                                                                                     smear_art,
-                                                                                                                     funcsmear_art,
-                                                                                                                     func,
-                                                                                                                     bkgonly,
-                                                                                                                     oct_hitmask,
-                                                                                                                     legacy);
+        std::tie(art_bc,hits, n_x1, n_u, n_v, n_x2) = get_hits(NPLANES,NPCB_PER_PLANE,GEOMETRY,hists["h_xres_strip"],ran,sig_art,m_sig_art_x,bc_length,xpos,ypos,smear_art,funcsmear_art,func,bkgonly,oct_hitmask,legacy);
         //################################################################//
         //################################################################//
 
@@ -321,8 +307,7 @@ int main(int argc, char* argv[]) {
                 smallest_bc = art_bc[j];
         }
 
-        // assume bkg rate has oct_response factored in!
-        
+        // assume bkg rate has oct_response factored in! 
         vector<Hit*> all_hits = hits;    
         if (bkgflag){
             vector<Hit*> bkghits = generate_bkg(smallest_bc, *GEOMETRY, bkgrate, string(chamberType));
@@ -334,9 +319,9 @@ int main(int argc, char* argv[]) {
 
         for (unsigned int ihit = 0; ihit < all_hits.size(); ihit++){
             int ib = all_hits[ihit]->MMFE8Index();
-            if (all_hits[ihit]->IsNoise() &&
-        (ib < 2 || ib > 5))
-    hists["h_dx"]->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[ihit]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
+            if (all_hits[ihit]->IsNoise() && (ib < 2 || ib > 5)){
+                hists["h_dx"]->Fill(GEOMETRY->Get(ib).LocalXatYend(all_hits[ihit]->Channel())+GEOMETRY->Get(ib).Origin().X()-xmuon);
+            }
         }
 
         for (auto road: m_roads)
@@ -351,6 +336,11 @@ int main(int argc, char* argv[]) {
         vector<slope_t> m_slopes;
         int ntrigroads;
         int ntrigroads_bkgonly = 0;
+
+        /*
+        for(auto ihit : all_hits){
+            std::cout<<ihit->Age()<<std::endl;
+        }*/
 
         std::tie(ntrigroads, m_slopes) = finder(all_hits, smallest_bc, m_roads, (pltflag||write_tree), ideal_vmm, ideal_addc, ideal_tp, i);
         hists["h_ntrig"]->Fill(ntrigroads);
@@ -371,6 +361,8 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
+        // ONLY EVENTS WITH A ROAD TRIGGER (NTRIGROADS > 0) PASS THIS POINT LOOK AT CONTINUE STATEMENT IN THE ABOVE IF STATEMENT 
+        
         // got a trigger, but none with real hits
         if (m_slopes.size() == 0 && ntrigroads != 0 ){
             nevent_allnoise++;
@@ -442,6 +434,7 @@ int main(int argc, char* argv[]) {
             iroads.push_back(k);
             most_hits = m_slopes[k].imuonhits;
         }
+
         hists_2d["h_ntrig_bc"]->Fill(myage,ntrig_age);
         myage++;
         while (myage < smallest_bc+bc_wind*2){
@@ -494,7 +487,7 @@ int main(int argc, char* argv[]) {
         hists_2d["h_xres_nxmuon"]->Fill(myslope.xmuon,myslope.xavg-xmuon);
 
         hists["h_theta_trig"]->Fill(thx * 180/TMath::Pi());
-        hists["h_phi_trig"]  ->Fill(thy * 180/TMath::Pi());
+        hists["h_phi_trig"]->Fill(thy * 180/TMath::Pi());
 
         if (myslope.uvbkg > 0){
             nevent_uvbkg++;
