@@ -38,6 +38,7 @@ public:
     int seed = -999;
 
     // variables from slope_t struct in finder algorithm
+    int event = -999;
     int ntrigroads = -999;
     std::vector<int> *count = 0;
     std::vector<int> *iroad = 0;
@@ -57,6 +58,10 @@ public:
     std::vector< std::vector<int> > *hit_strip = 0;
     std::vector< std::vector<int> > *hit_bc = 0;
 
+    // variables for tracks from fitter algorithm
+    std::vector< std::vector<double> > *track_x = 0;
+    std::vector< std::vector<double> > *track_y = 0;
+    std::vector< std::vector<double> > *track_z = 0;
 
     // Initialize functions
     SimNtupleData();
@@ -72,6 +77,7 @@ private:
 SimNtupleData::SimNtupleData(){}
 
 void SimNtupleData::SetBranchData(TTree *t) {
+    t->Branch("event", &event);
     t->Branch("ntrigroads", &ntrigroads);
     t->Branch("count", &count);
     t->Branch("iroad", &iroad);
@@ -90,10 +96,13 @@ void SimNtupleData::SetBranchData(TTree *t) {
     t->Branch("hit_layer", &hit_layer);
     t->Branch("hit_strip", &hit_strip);
     t->Branch("hit_bc", &hit_bc);
-
+    t->Branch("track_x", &track_x);
+    t->Branch("track_y", &track_y);
+    t->Branch("track_z", &track_z);
 }   
 
 void SimNtupleData::SetAddressReadData(TTree *t) {
+    t->SetBranchAddress("event", &event);
     t->SetBranchAddress("ntrigroads", &ntrigroads);
     t->SetBranchAddress("count", &count);
     t->SetBranchAddress("iroad", &iroad);
@@ -112,6 +121,9 @@ void SimNtupleData::SetAddressReadData(TTree *t) {
     t->SetBranchAddress("hit_layer", &hit_layer);
     t->SetBranchAddress("hit_strip", &hit_strip);
     t->SetBranchAddress("hit_bc", &hit_bc);
+    t->SetBranchAddress("track_x", &track_x);
+    t->SetBranchAddress("track_y", &track_y);
+    t->SetBranchAddress("track_z", &track_z);
 }   
 
 void SimNtupleData::SetBranchArgs(TTree *t){

@@ -18,8 +18,13 @@ using namespace std;
 #include <TF1.h>
 #include <TFile.h>
 
-// Micromegas double wedge geometry
-#include "GeoMultiplet.hh" // from bb5_analysis
+// from bb5_analysis
+#include "GeoMultiplet.hh" // Micromegas double wedge geometry
+#include "MMCluster.hh" 
+#include "MMHit.hh"
+#include "SimpleTrackFitter.hh"
+#include "MMTrack.hh"
+
 // Header includes
 #include "Road_GeoMultiplet.hh" 
 #include "Finder_GeoMultiplet.hh"
@@ -150,9 +155,13 @@ void newevent(SimNtupleData *SN){
     SN->hit_layer->clear();
     SN->hit_strip->clear();
     SN->hit_bc->clear();
+    SN->track_x->clear();
+    SN->track_y->clear();
+    SN->track_z->clear();
 }
 
-void fillevent(SimNtupleData *SN, TTree* tree, int ntrigroads, vector<slope_t> m_slopes){
+void fillevent(SimNtupleData *SN, TTree* tree, int ntrigroads, vector<slope_t> m_slopes, int event, vector<MMTrack> tracks, GeoMultiplet* GEOMETRY){
+	SN->event = event;
 	SN->ntrigroads = ntrigroads;
 	for (auto slope: m_slopes){
 		SN->count->push_back(slope.count);
@@ -181,7 +190,21 @@ void fillevent(SimNtupleData *SN, TTree* tree, int ntrigroads, vector<slope_t> m
     	SN->hit_strip->push_back(hit_strip);
     	SN->hit_bc->push_back(hit_bc);
 	}
-	tree->Fill();
+	for (auto track: tracks){
+		vector<double> track_x;
+		vector<double> track_y;
+		vector<double> track_z;
+		for (int ilay = 0; ilay < NLAYERS; ilay++){
+	        auto layer = GEOMETRY->GetLayer(ilay);
+	        track_x.push_back(track.PointZ(layer->Origin().Z()).X());
+	        track_y.push_back(track.PointZ(layer->Origin().Z()).Y());
+	        track_z.push_back(layer->Origin().Z());
+	    }
+	    SN->track_x->push_back(track_x);
+	    SN->track_y->push_back(track_y);
+	    SN->track_z->push_back(track_z);
+	}
+	tree->Fill();	
 }
 
 void fillargs(SimNtupleData *SN, TTree* tree){
@@ -215,6 +238,11 @@ void fillargs(SimNtupleData *SN, TTree* tree){
     tree->Fill();
 }
 
+int channelFromMMFE8VMMSTRIP(int mmfe8, int vmm, int strip){
+	// if (mmfe8 % 2 == 0) return mmfe8*512 + (511-vmm*64) - strip; // accounts for the mmfe8 flipping
+	return strip - mmfe8*512 - vmm*64;
+}
+
 int main(int argc, char* argv[]) {
 	// print the job parameters
 	print_parameters();
@@ -225,6 +253,9 @@ int main(int argc, char* argv[]) {
 
 	// setup the roads
 	vector<Road*> roads = create_roads(*GEOMETRY, uvrflag, m_xthr, m_uvthr, string(chamberType), trapflag);
+
+	// setup track fitter
+	auto FITTER = new SimpleTrackFitter();
 
 	// open the decoded data 
 	string inFileName = "/Users/anthonybadea/Desktop/tree-2.root";
@@ -238,7 +269,7 @@ int main(int argc, char* argv[]) {
 	// define output ntuple
 	string outputFileName = "tpcosmics.root";
 	TFile* fout = new TFile(outputFileName.c_str(), "RECREATE");
-    TTree* data = new TTree("data","data");
+    TTree* data = new TTree("triggers","triggers");
     TTree* args = new TTree("args", "args");
     SimNtupleData *SN = new SimNtupleData();
     SN->SetBranchData(data);
@@ -247,10 +278,10 @@ int main(int argc, char* argv[]) {
 
     msg(Form("Number of events: %d",nevents));
 	for ( int evt = 0; evt < nevents; evt++) {
-		msg(Form("Event %d/%d",evt,nevents));
+		// msg(Form("Event %d/%d",evt,nevents));
 		decodedData->GetEntry(evt);
 		newevent(SN);
-		// if (v_artHit_octupletLayer->size() == 0) continue;
+		if (evt != 8) continue;
 		// get the hits
 		vector<int> art_bcid;
 		vector<Hit*> hits;
@@ -261,7 +292,37 @@ int main(int argc, char* argv[]) {
 		vector<slope_t> m_slopes;
 		int ntrigroads;
 		std::tie(ntrigroads, m_slopes) = finder(hits, mu_firstbc, roads, saveHits, ideal_vmm, ideal_addc, ideal_tp, evt);
-		fillevent(SN,data,ntrigroads,m_slopes);
+		
+
+		vector<MMTrack> tracks;
+		for (auto slope: m_slopes){
+			std::vector<MMCluster*> clusters;
+			for( auto hit: slope.slopehits){
+				int layer = hit.MMFE8Index();
+				int mmfe8 = hit.VMM()/8; // mmfe8 index (called radius in MMHit), labeled 0-15
+				int strip = hit.Channel(); // strip labeled 0-8192
+				int vmm = hit.VMM()%8; // VMM within an MMFE8, labeled 0-7
+				double channel = channelFromMMFE8VMMSTRIP(mmfe8,vmm,strip); // channel withinin an MMFE8 labeled 0-512 
+				// msg(Form("Registering hit (layer,mmfe8,strip,vmm,channel,evt): (%d, %d, %d, %d, %f, %d)",layer,mmfe8,strip,vmm,channel,evt));
+				const MMHit h(layer,mmfe8,strip,vmm,channel,evt);
+				MMCluster *cluster = new MMCluster();
+				cluster->AddHit(h);
+				clusters.push_back(cluster);
+			}
+			tracks.push_back( FITTER->Fit(clusters, *GEOMETRY, evt) );
+		}
+
+		fillevent(SN,data,ntrigroads,m_slopes,evt,tracks,GEOMETRY);
+		
+
+		// loop over the hits
+		// make a vector of clusters
+		// make a cluster for each vector of hits
+		// converts hits to MMHits
+		// add these hits to the cluster
+		// pass this into fit
+		
+
 	}
 	msg("Finished.");    
 	msg("-------------------------------------------");                               
