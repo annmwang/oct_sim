@@ -42,7 +42,8 @@ int NSTRIPS_DN_XX = 0;
 int NPLANES = 8;
 int ADDC_BUFFER = 8;
 bool db = true; // debug output flag
-TRandom3 *ran = new TRandom3(time(NULL));
+int seed = time(NULL);
+TRandom3 *ran = new TRandom3(seed);
 
 // Purpose: 
 struct slope_t {

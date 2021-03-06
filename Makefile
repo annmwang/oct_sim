@@ -27,6 +27,7 @@ DICT_FILES := $(wildcard include/*.pcm)
 MKDIR_BIN=mkdir -p $(PWD)/bin
 
 all: mkdirBin VectorDict sim testGBT sim_PCBEff_Modular validate_changes tpcosmics
+cosmics: mkdirBin VectorDict tpcosmics
 
 mkdirBin:
 	$(MKDIR_BIN)
